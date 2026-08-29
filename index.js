@@ -65,3 +65,14 @@ bot.on('message', (msg) => {
 });
 
 console.log("Bot ishga tushdi...");
+process.on('uncaughtException', (err) => {
+  console.error('Kutilmagan xato (dastur davom etadi):', err.message);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Kutilmagan promise xatosi (dastur davom etadi):', err);
+});
+
+bot.on('polling_error', (err) => {
+  console.error('Polling xatosi (dastur davom etadi):', err.message);
+});
