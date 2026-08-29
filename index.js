@@ -1,4 +1,16 @@
 require('dotenv').config();
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Zehnly bot ishlayapti! 🤖');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server ${PORT}-portda ishga tushdi`);
+});
+
 const TelegramBot = require('node-telegram-bot-api');
 
 const token = process.env.BOT_TOKEN;
