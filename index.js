@@ -61,6 +61,28 @@ const tarixLevelMenu = {
   }
 };
 
+const inglizMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🔤 Umumiy sinov'],
+      ['🎯 CEFR darajasini bilib olish'],
+      ['⬅️ Fanga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const cefrLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ["🟢 A1-A2 (Boshlang'ich)"],
+      ["🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)"],
+      ['⬅️ Ingliz tiliga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, "Salom! Men *Zehnly* botman 🤖\nQaysi guruhdan boshlaymiz?", {
@@ -74,11 +96,12 @@ const mavzular = {
   '🎬 Kino-Musiqa sinovi': { key: 'kino', nom: 'Kino-Musiqa sinovi' },
   '💡 Fakt sinovi': { key: 'faktlar', nom: 'Fakt sinovi' },
   '💻 Texnologiya sinovi': { key: 'texnologiya', nom: 'Texnologiya sinovi' },
-  '🔤 Ingliz tili sinovi': { key: 'ingliz', nom: 'Ingliz tili sinovi' },
-  '🟢 5-7 sinf': { key: 'tarix_5_7', nom: 'Tarix sinovi (5-7 sinf)' }
+  '🔤 Umumiy sinov': { key: 'ingliz', nom: 'Ingliz tili umumiy sinovi' },
+  '🟢 5-7 sinf': { key: 'tarix_5_7', nom: 'Tarix sinovi (5-7 sinf)' },
+  "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
-const tayyorEmasMavzular = ['➗ Matematika sinovi', '⚛️ Fizika sinovi', '🟡 7-9 sinf', '🔴 9-11 sinf'];
+const tayyorEmasMavzular = ['➗ Matematika sinovi', '⚛️ Fizika sinovi', '🟡 7-9 sinf', '🔴 9-11 sinf', "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)"];
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
@@ -99,6 +122,16 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (text === '🔤 Ingliz tili sinovi') {
+    bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", inglizMenu);
+    return;
+  }
+
+  if (text === '🎯 CEFR darajasini bilib olish') {
+    bot.sendMessage(chatId, "Qaysi daraja guruhini sinab ko'rasiz?\n\n⚠️ Eslatma: bu taxminiy natija, rasmiy sertifikat emas.", cefrLevelMenu);
+    return;
+  }
+
   if (text === '⬅️ Orqaga') {
     bot.sendMessage(chatId, "Bosh menyu:", mainMenu);
     return;
@@ -106,6 +139,11 @@ bot.on('message', (msg) => {
 
   if (text === '⬅️ Fanga qaytish') {
     bot.sendMessage(chatId, "Qaysi fanni tanlaysiz?", schoolMenu);
+    return;
+  }
+
+  if (text === '⬅️ Ingliz tiliga qaytish') {
+    bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", inglizMenu);
     return;
   }
 
