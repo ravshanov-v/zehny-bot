@@ -22,7 +22,9 @@ const mainMenu = {
   reply_markup: {
     keyboard: [
       ['🎮 Qiziqarli sinovlar'],
-      ['📚 Maktab fanlari']
+      ['📚 Maktab fanlari'],
+      ['🌐 Tillar'],
+      ["💻 IT yo'nalishlari"]
     ],
     resize_keyboard: true
   }
@@ -42,8 +44,10 @@ const funMenu = {
 const schoolMenu = {
   reply_markup: {
     keyboard: [
-      ['🔤 Ingliz tili sinovi', '➗ Matematika sinovi'],
-      ['⚛️ Fizika sinovi', '📜 Tarix sinovi'],
+      ['📜 Tarix sinovi', '➗ Matematika sinovi'],
+      ['⚛️ Fizika sinovi', '🧪 Kimyo sinovi'],
+      ['🧬 Biologiya sinovi', '📖 Adabiyot sinovi'],
+      ['✍️ Ona tili sinovi'],
       ['⬅️ Orqaga']
     ],
     resize_keyboard: true
@@ -61,12 +65,22 @@ const tarixLevelMenu = {
   }
 };
 
+const languagesMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🇬🇧 Ingliz tili'],
+      ['⬅️ Orqaga']
+    ],
+    resize_keyboard: true
+  }
+};
+
 const inglizMenu = {
   reply_markup: {
     keyboard: [
       ['🔤 Umumiy sinov'],
       ['🎯 CEFR darajasini bilib olish'],
-      ['⬅️ Fanga qaytish']
+      ['⬅️ Tillarga qaytish']
     ],
     resize_keyboard: true
   }
@@ -78,6 +92,20 @@ const cefrLevelMenu = {
       ["🟢 A1-A2 (Boshlang'ich)"],
       ["🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)"],
       ['⬅️ Ingliz tiliga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const itMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🎨 Frontend sinovi', '⚙️ Backend sinovi'],
+      ['📱 Mobil dasturlash sinovi', '📊 Data Science sinovi'],
+      ['🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi'],
+      ['🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi'],
+      ["🗄️ Ma'lumotlar bazasi sinovi", '🦾 Robototexnika sinovi'],
+      ['⬅️ Orqaga']
     ],
     resize_keyboard: true
   }
@@ -101,7 +129,14 @@ const mavzular = {
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
-const tayyorEmasMavzular = ['➗ Matematika sinovi', '⚛️ Fizika sinovi', '🟡 7-9 sinf', '🔴 9-11 sinf', "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)"];
+const tayyorEmasMavzular = [
+  '➗ Matematika sinovi', '⚛️ Fizika sinovi', '🧪 Kimyo sinovi', '🧬 Biologiya sinovi',
+  '📖 Adabiyot sinovi', '✍️ Ona tili sinovi',
+  '🟡 7-9 sinf', '🔴 9-11 sinf', "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)",
+  '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
+  '🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi', '🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi',
+  "🗄️ Ma'lumotlar bazasi sinovi", '🦾 Robototexnika sinovi'
+];
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
@@ -117,12 +152,22 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (text === "🌐 Tillar") {
+    bot.sendMessage(chatId, "Qaysi tilni tanlaysiz?", languagesMenu);
+    return;
+  }
+
+  if (text === "💻 IT yo'nalishlari") {
+    bot.sendMessage(chatId, "Qaysi IT yo'nalishini tanlaysiz?", itMenu);
+    return;
+  }
+
   if (text === '📜 Tarix sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", tarixLevelMenu);
     return;
   }
 
-  if (text === '🔤 Ingliz tili sinovi') {
+  if (text === '🇬🇧 Ingliz tili') {
     bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", inglizMenu);
     return;
   }
@@ -139,6 +184,11 @@ bot.on('message', (msg) => {
 
   if (text === '⬅️ Fanga qaytish') {
     bot.sendMessage(chatId, "Qaysi fanni tanlaysiz?", schoolMenu);
+    return;
+  }
+
+  if (text === '⬅️ Tillarga qaytish') {
+    bot.sendMessage(chatId, "Qaysi tilni tanlaysiz?", languagesMenu);
     return;
   }
 
