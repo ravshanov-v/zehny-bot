@@ -68,8 +68,8 @@ const tarixLevelMenu = {
 const matematikaLevelMenu = {
   reply_markup: {
     keyboard: [
-      ['🟢 Matematika 5-7 sinf'],
-      ['🟡 7-9 sinf', '🔴 9-11 sinf'],
+      ['🟢 Matematika 5-7 sinf', '🟡 Matematika 7-9 sinf'],
+      ['🔴 9-11 sinf'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -138,6 +138,7 @@ const mavzular = {
   '🔤 Umumiy sinov': { key: 'ingliz', nom: 'Ingliz tili umumiy sinovi' },
   '🟢 5-7 sinf': { key: 'tarix_5_7', nom: 'Tarix sinovi (5-7 sinf)' },
   '🟢 Matematika 5-7 sinf': { key: 'matematika_5_7', nom: 'Matematika sinovi (5-7 sinf)' },
+  '🟡 Matematika 7-9 sinf': { key: 'matematika_7_9', nom: 'Matematika sinovi (7-9 sinf)' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
