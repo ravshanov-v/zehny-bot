@@ -76,6 +76,17 @@ const matematikaLevelMenu = {
   }
 };
 
+const fizikaLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🟢 Fizika 5-7 sinf'],
+      ['🟡 Fizika 7-9 sinf', '🔴 Fizika 9-11 sinf'],
+      ['⬅️ Fanga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
 const languagesMenu = {
   reply_markup: {
     keyboard: [
@@ -142,12 +153,14 @@ const mavzular = {
   '🟢 Matematika 5-7 sinf': { key: 'matematika_5_7', nom: 'Matematika sinovi (5-7 sinf)' },
   '🟡 Matematika 7-9 sinf': { key: 'matematika_7_9', nom: 'Matematika sinovi (7-9 sinf)' },
   '🔴 Matematika 9-11 sinf': { key: 'matematika_9_11', nom: 'Matematika sinovi (9-11 sinf)' },
+  '🟢 Fizika 5-7 sinf': { key: 'fizika_5_7', nom: 'Fizika sinovi (5-7 sinf)' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
 const tayyorEmasMavzular = [
-  '⚛️ Fizika sinovi', '🧪 Kimyo sinovi', '🧬 Biologiya sinovi',
+  '🧪 Kimyo sinovi', '🧬 Biologiya sinovi',
   '📖 Adabiyot sinovi', '✍️ Ona tili sinovi',
+  '🟡 Fizika 7-9 sinf', '🔴 Fizika 9-11 sinf',
   "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)",
   '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
   '🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi', '🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi',
@@ -185,6 +198,11 @@ bot.on('message', (msg) => {
 
   if (text === '➗ Matematika sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", matematikaLevelMenu);
+    return;
+  }
+
+  if (text === '⚛️ Fizika sinovi') {
+    bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", fizikaLevelMenu);
     return;
   }
 
