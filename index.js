@@ -97,6 +97,17 @@ const kimyoLevelMenu = {
   }
 };
 
+const biologiyaLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🟢 Biologiya 5-7 sinf', '🟡 Biologiya 7-9 sinf'],
+      ['🔴 Biologiya 9-11 sinf'],
+      ['⬅️ Fanga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
 const languagesMenu = {
   reply_markup: {
     keyboard: [
@@ -168,11 +179,13 @@ const mavzular = {
   '🔴 Fizika 9-11 sinf': { key: 'fizika_9_11', nom: 'Fizika sinovi (9-11 sinf)' },
   '🟡 Kimyo 7-9 sinf': { key: 'kimyo_7_9', nom: 'Kimyo sinovi (7-9 sinf)' },
   '🔴 Kimyo 9-11 sinf': { key: 'kimyo_9_11', nom: 'Kimyo sinovi (9-11 sinf)' },
+  '🟢 Biologiya 5-7 sinf': { key: 'biologiya_5_7', nom: 'Biologiya sinovi (5-7 sinf)' },
+  '🟡 Biologiya 7-9 sinf': { key: 'biologiya_7_9', nom: 'Biologiya sinovi (7-9 sinf)' },
+  '🔴 Biologiya 9-11 sinf': { key: 'biologiya_9_11', nom: 'Biologiya sinovi (9-11 sinf)' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
 const tayyorEmasMavzular = [
-  '🧬 Biologiya sinovi',
   '📖 Adabiyot sinovi', '✍️ Ona tili sinovi',
   "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)",
   '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
@@ -221,6 +234,11 @@ bot.on('message', (msg) => {
 
   if (text === '🧪 Kimyo sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", kimyoLevelMenu);
+    return;
+  }
+
+  if (text === '🧬 Biologiya sinovi') {
+    bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", biologiyaLevelMenu);
     return;
   }
 
