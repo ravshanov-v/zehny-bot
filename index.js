@@ -18,13 +18,18 @@ const bot = new TelegramBot(token, { polling: true });
 
 const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
+// ==== TAKLIF TUGMASI UCHUN ====
+const awaitingSuggestion = new Set();
+const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+
 const mainMenu = {
   reply_markup: {
     keyboard: [
       ['🎮 Qiziqarli sinovlar'],
       ['📚 Maktab fanlari'],
       ['🌐 Tillar'],
-      ["💻 IT yo'nalishlari"]
+      ["💻 IT yo'nalishlari"],
+      ['📝 Taklif bildirish']
     ],
     resize_keyboard: true
   }
@@ -97,6 +102,7 @@ const kimyoLevelMenu = {
   }
 };
 
+// DIQQAT: bu tugmalar mavzular lug'atidagi kalitlar bilan ANIQ mos bo'lishi shart
 const biologiyaLevelMenu = {
   reply_markup: {
     keyboard: [
@@ -118,11 +124,12 @@ const languagesMenu = {
   }
 };
 
+// DIQQAT: "Umumiy sinov" tugmasi mavzular lug'atidagi kalit bilan mos bo'lishi shart
 const inglizMenu = {
   reply_markup: {
     keyboard: [
       ['🔤 Umumiy sinov'],
-      ['🎯 CEFR darajasini bilib olish'],
+      ['📜 CEFR darajasini bilib olish'],
       ['⬅️ Tillarga qaytish']
     ],
     resize_keyboard: true
@@ -197,6 +204,38 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
+  // ==== 1) TAKLIF BILDIRISH TUGMASI ====
+  if (text === '📝 Taklif bildirish') {
+    awaitingSuggestion.add(chatId);
+    bot.sendMessage(
+      chatId,
+      "✍️ Taklif yoki fikringizni yozib yuboring — o'qib chiqaman!\n\nBekor qilish uchun /cancel yozing."
+    );
+    return;
+  }
+
+  // ==== 2) FOYDALANUVCHI TAKLIF YOZAYOTGAN HOLATDA BO'LSA ====
+  if (awaitingSuggestion.has(chatId)) {
+    if (text === '/cancel') {
+      awaitingSuggestion.delete(chatId);
+      bot.sendMessage(chatId, "Bekor qilindi.", mainMenu);
+      return;
+    }
+
+    const userName = msg.from.first_name || 'Foydalanuvchi';
+    const username = msg.from.username ? `@${msg.from.username}` : `ID: ${chatId}`;
+
+    bot.sendMessage(
+      ADMIN_CHAT_ID,
+      `📩 Yangi taklif!\n\n👤 Kimdan: ${userName} (${username})\n\n💬 Matn:\n${text}`
+    );
+
+    awaitingSuggestion.delete(chatId);
+    bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu);
+    return;
+  }
+
+  // ==== ASOSIY MENYU ====
   if (text === '🎮 Qiziqarli sinovlar') {
     bot.sendMessage(chatId, "Qaysi mavzuni tanlaysiz?", funMenu);
     return;
@@ -247,7 +286,7 @@ bot.on('message', (msg) => {
     return;
   }
 
-  if (text === '🎯 CEFR darajasini bilib olish') {
+  if (text === '📜 CEFR darajasini bilib olish') {
     bot.sendMessage(chatId, "Qaysi daraja guruhini sinab ko'rasiz?\n\n⚠️ Eslatma: bu taxminiy natija, rasmiy sertifikat emas.", cefrLevelMenu);
     return;
   }
