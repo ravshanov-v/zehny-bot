@@ -113,6 +113,14 @@ const biologiyaLevelMenu = {
     resize_keyboard: true
   }
 };
+const adabiyotLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🟢 Adabiyot 5-7 sinf', '🟡 Adabiyot 7-9 sinf'],
+      ['🔴 Adabiyot 9-11 sinf'], ['⬅️ Fanga qaytish']
+    ], resize_keyboard: true
+  }
+};
 
 const languagesMenu = {
   reply_markup: {
@@ -189,11 +197,14 @@ const mavzular = {
   '🟢 Biologiya 5-7 sinf': { key: 'biologiya_5_7', nom: 'Biologiya sinovi (5-7 sinf)' },
   '🟡 Biologiya 7-9 sinf': { key: 'biologiya_7_9', nom: 'Biologiya sinovi (7-9 sinf)' },
   '🔴 Biologiya 9-11 sinf': { key: 'biologiya_9_11', nom: 'Biologiya sinovi (9-11 sinf)' },
+  '🟢 Adabiyot 5-7 sinf': { key: 'adabiyot_5_7', nom: 'Adabiyot sinovi (5-7 sinf)' },
+  '🟡 Adabiyot 7-9 sinf': { key: 'adabiyot_7_9', nom: 'Adabiyot sinovi (7-9 sinf)' },
+  '🔴 Adabiyot 9-11 sinf': { key: 'adabiyot_9_11', nom: 'Adabiyot sinovi (9-11 sinf)' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
 };
 
 const tayyorEmasMavzular = [
-  '📖 Adabiyot sinovi', '✍️ Ona tili sinovi',
+  '✍️ Ona tili sinovi',
   "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)",
   '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
   '🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi', '🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi',
@@ -278,6 +289,10 @@ bot.on('message', (msg) => {
 
   if (text === '🧬 Biologiya sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", biologiyaLevelMenu);
+    return;
+  }
+  if (text === '📖 Adabiyot sinovi') {
+    bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", adabiyotLevelMenu);
     return;
   }
 
