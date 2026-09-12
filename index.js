@@ -20,7 +20,7 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 123456789; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
 
 const mainMenu = {
   reply_markup: {
@@ -113,12 +113,26 @@ const biologiyaLevelMenu = {
     resize_keyboard: true
   }
 };
+
 const adabiyotLevelMenu = {
   reply_markup: {
     keyboard: [
       ['🟢 Adabiyot 5-7 sinf', '🟡 Adabiyot 7-9 sinf'],
-      ['🔴 Adabiyot 9-11 sinf'], ['⬅️ Fanga qaytish']
-    ], resize_keyboard: true
+      ['🔴 Adabiyot 9-11 sinf'],
+      ['⬅️ Fanga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const onaTiliLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🟢 Ona tili 5-7 sinf', '🟡 Ona tili 7-9 sinf'],
+      ['🔴 Ona tili 9-11 sinf'],
+      ['⬅️ Fanga qaytish']
+    ],
+    resize_keyboard: true
   }
 };
 
@@ -200,12 +214,15 @@ const mavzular = {
   '🟢 Adabiyot 5-7 sinf': { key: 'adabiyot_5_7', nom: 'Adabiyot sinovi (5-7 sinf)' },
   '🟡 Adabiyot 7-9 sinf': { key: 'adabiyot_7_9', nom: 'Adabiyot sinovi (7-9 sinf)' },
   '🔴 Adabiyot 9-11 sinf': { key: 'adabiyot_9_11', nom: 'Adabiyot sinovi (9-11 sinf)' },
-  "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' }
+  '🟢 Ona tili 5-7 sinf': { key: 'ona_tili_5_7', nom: 'Ona tili sinovi (5-7 sinf)' },
+  '🟡 Ona tili 7-9 sinf': { key: 'ona_tili_7_9', nom: 'Ona tili sinovi (7-9 sinf)' },
+  '🔴 Ona tili 9-11 sinf': { key: 'ona_tili_9_11', nom: 'Ona tili sinovi (9-11 sinf)' },
+  "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' },
+  "🟡 B1-B2 (O'rta)": { key: 'cefr_b1_b2', nom: "Ingliz tili CEFR sinovi (B1-B2)" },
+  "🔴 C1-C2 (Yuqori)": { key: 'cefr_c1_c2', nom: "Ingliz tili CEFR sinovi (C1-C2)" }
 };
 
 const tayyorEmasMavzular = [
-  '✍️ Ona tili sinovi',
-  "🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)",
   '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
   '🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi', '🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi',
   "🗄️ Ma'lumotlar bazasi sinovi", '🦾 Robototexnika sinovi'
@@ -291,8 +308,14 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", biologiyaLevelMenu);
     return;
   }
+
   if (text === '📖 Adabiyot sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", adabiyotLevelMenu);
+    return;
+  }
+
+  if (text === '✍️ Ona tili sinovi') {
+    bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", onaTiliLevelMenu);
     return;
   }
 
