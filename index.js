@@ -140,6 +140,7 @@ const languagesMenu = {
   reply_markup: {
     keyboard: [
       ['🇬🇧 Ingliz tili'],
+      ['🇷🇺 Rus tili'],
       ['⬅️ Orqaga']
     ],
     resize_keyboard: true
@@ -164,6 +165,28 @@ const cefrLevelMenu = {
       ["🟢 A1-A2 (Boshlang'ich)"],
       ["🟡 B1-B2 (O'rta)", "🔴 C1-C2 (Yuqori)"],
       ['⬅️ Ingliz tiliga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const rusMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🔤 Rus tili umumiy sinovi'],
+      ['📜 Rus tili CEFR darajasini bilib olish'],
+      ['⬅️ Tillarga qaytish']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const rusCefrLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ["🟢 Rus A1-A2 (Boshlang'ich)"],
+      ["🟡 Rus B1-B2 (O'rta)", "🔴 Rus C1-C2 (Yuqori)"],
+      ['⬅️ Rus tiliga qaytish']
     ],
     resize_keyboard: true
   }
@@ -227,6 +250,10 @@ const mavzular = {
   '🌐 Tarmoqlar sinovi': { key: 'tarmoqlar', nom: 'Tarmoqlar sinovi' },
   "🗄️ Ma'lumotlar bazasi sinovi": { key: 'malumotlar_bazasi', nom: "Ma'lumotlar bazasi sinovi" },
   '🦾 Robototexnika sinovi': { key: 'robototexnika', nom: 'Robototexnika sinovi' },
+  '🔤 Rus tili umumiy sinovi': { key: 'rus_umumiy', nom: 'Rus tili umumiy sinovi' },
+  "🟢 Rus A1-A2 (Boshlang'ich)": { key: 'rus_cefr_a1_a2', nom: 'Rus tili CEFR sinovi (A1-A2)' },
+  "🟡 Rus B1-B2 (O'rta)": { key: 'rus_cefr_b1_b2', nom: "Rus tili CEFR sinovi (B1-B2)" },
+  "🔴 Rus C1-C2 (Yuqori)": { key: 'rus_cefr_c1_c2', nom: "Rus tili CEFR sinovi (C1-C2)" },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' },
   "🟡 B1-B2 (O'rta)": { key: 'cefr_b1_b2', nom: "Ingliz tili CEFR sinovi (B1-B2)" },
   "🔴 C1-C2 (Yuqori)": { key: 'cefr_c1_c2', nom: "Ingliz tili CEFR sinovi (C1-C2)" }
@@ -329,6 +356,21 @@ bot.on('message', (msg) => {
 
   if (text === '🇬🇧 Ingliz tili') {
     bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", inglizMenu);
+    return;
+  }
+
+  if (text === '🇷🇺 Rus tili') {
+    bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", rusMenu);
+    return;
+  }
+
+  if (text === '📜 Rus tili CEFR darajasini bilib olish') {
+    bot.sendMessage(chatId, "Qaysi daraja guruhini sinab ko'rasiz?\n\n⚠️ Eslatma: bu taxminiy natija, rasmiy sertifikat emas.", rusCefrLevelMenu);
+    return;
+  }
+
+  if (text === '⬅️ Rus tiliga qaytish') {
+    bot.sendMessage(chatId, "Qaysi turdagi sinovni xohlaysiz?", rusMenu);
     return;
   }
 
