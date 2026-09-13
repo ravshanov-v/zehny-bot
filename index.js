@@ -20,7 +20,7 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 123456789; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
 
 const mainMenu = {
   reply_markup: {
@@ -217,15 +217,23 @@ const mavzular = {
   '🟢 Ona tili 5-7 sinf': { key: 'ona_tili_5_7', nom: 'Ona tili sinovi (5-7 sinf)' },
   '🟡 Ona tili 7-9 sinf': { key: 'ona_tili_7_9', nom: 'Ona tili sinovi (7-9 sinf)' },
   '🔴 Ona tili 9-11 sinf': { key: 'ona_tili_9_11', nom: 'Ona tili sinovi (9-11 sinf)' },
+  '🎨 Frontend sinovi': { key: 'frontend', nom: 'Frontend sinovi' },
+  '⚙️ Backend sinovi': { key: 'backend', nom: 'Backend sinovi' },
+  '📱 Mobil dasturlash sinovi': { key: 'mobil', nom: 'Mobil dasturlash sinovi' },
+  '📊 Data Science sinovi': { key: 'data_science', nom: 'Data Science sinovi' },
+  '🤖 AI/ML sinovi': { key: 'ai_ml', nom: 'AI/ML sinovi' },
+  '🔒 Kiberxavfsizlik sinovi': { key: 'kiberxavfsizlik', nom: 'Kiberxavfsizlik sinovi' },
+  '🎨 UI/UX Dizayn sinovi': { key: 'uiux', nom: 'UI/UX Dizayn sinovi' },
+  '🌐 Tarmoqlar sinovi': { key: 'tarmoqlar', nom: 'Tarmoqlar sinovi' },
+  "🗄️ Ma'lumotlar bazasi sinovi": { key: 'malumotlar_bazasi', nom: "Ma'lumotlar bazasi sinovi" },
+  '🦾 Robototexnika sinovi': { key: 'robototexnika', nom: 'Robototexnika sinovi' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' },
   "🟡 B1-B2 (O'rta)": { key: 'cefr_b1_b2', nom: "Ingliz tili CEFR sinovi (B1-B2)" },
   "🔴 C1-C2 (Yuqori)": { key: 'cefr_c1_c2', nom: "Ingliz tili CEFR sinovi (C1-C2)" }
 };
 
 const tayyorEmasMavzular = [
-  '🎨 Frontend sinovi', '⚙️ Backend sinovi', '📱 Mobil dasturlash sinovi', '📊 Data Science sinovi',
-  '🤖 AI/ML sinovi', '🔒 Kiberxavfsizlik sinovi', '🎨 UI/UX Dizayn sinovi', '🌐 Tarmoqlar sinovi',
-  "🗄️ Ma'lumotlar bazasi sinovi", '🦾 Robototexnika sinovi'
+
 ];
 
 bot.on('message', (msg) => {
