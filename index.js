@@ -64,6 +64,7 @@ const tarixLevelMenu = {
     keyboard: [
       ['🟢 5-7 sinf', '🟡 7-9 sinf'],
       ['🔴 9-11 sinf'],
+      ['🎓 Tarix Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -75,6 +76,7 @@ const matematikaLevelMenu = {
     keyboard: [
       ['🟢 Matematika 5-7 sinf', '🟡 Matematika 7-9 sinf'],
       ['🔴 Matematika 9-11 sinf'],
+      ['🎓 Matematika Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -86,6 +88,7 @@ const fizikaLevelMenu = {
     keyboard: [
       ['🟢 Fizika 5-7 sinf', '🟡 Fizika 7-9 sinf'],
       ['🔴 Fizika 9-11 sinf'],
+      ['🎓 Fizika Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -96,6 +99,7 @@ const kimyoLevelMenu = {
   reply_markup: {
     keyboard: [
       ['🟡 Kimyo 7-9 sinf', '🔴 Kimyo 9-11 sinf'],
+      ['🎓 Kimyo Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -108,6 +112,7 @@ const biologiyaLevelMenu = {
     keyboard: [
       ['🟢 Biologiya 5-7 sinf', '🟡 Biologiya 7-9 sinf'],
       ['🔴 Biologiya 9-11 sinf'],
+      ['🎓 Biologiya Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -119,6 +124,7 @@ const adabiyotLevelMenu = {
     keyboard: [
       ['🟢 Adabiyot 5-7 sinf', '🟡 Adabiyot 7-9 sinf'],
       ['🔴 Adabiyot 9-11 sinf'],
+      ['🎓 Adabiyot Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -130,6 +136,7 @@ const onaTiliLevelMenu = {
     keyboard: [
       ['🟢 Ona tili 5-7 sinf', '🟡 Ona tili 7-9 sinf'],
       ['🔴 Ona tili 9-11 sinf'],
+      ['🎓 Ona tili Milliy sertifikat'],
       ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
@@ -254,6 +261,13 @@ const mavzular = {
   "🟢 Rus A1-A2 (Boshlang'ich)": { key: 'rus_cefr_a1_a2', nom: 'Rus tili CEFR sinovi (A1-A2)' },
   "🟡 Rus B1-B2 (O'rta)": { key: 'rus_cefr_b1_b2', nom: "Rus tili CEFR sinovi (B1-B2)" },
   "🔴 Rus C1-C2 (Yuqori)": { key: 'rus_cefr_c1_c2', nom: "Rus tili CEFR sinovi (C1-C2)" },
+  '🎓 Matematika Milliy sertifikat': { key: 'matematika_milliy', nom: 'Matematika sinovi (Milliy sertifikat)' },
+  '🎓 Tarix Milliy sertifikat': { key: 'tarix_milliy', nom: 'Tarix sinovi (Milliy sertifikat)' },
+  '🎓 Fizika Milliy sertifikat': { key: 'fizika_milliy', nom: 'Fizika sinovi (Milliy sertifikat)' },
+  '🎓 Kimyo Milliy sertifikat': { key: 'kimyo_milliy', nom: 'Kimyo sinovi (Milliy sertifikat)' },
+  '🎓 Biologiya Milliy sertifikat': { key: 'biologiya_milliy', nom: 'Biologiya sinovi (Milliy sertifikat)' },
+  '🎓 Adabiyot Milliy sertifikat': { key: 'adabiyot_milliy', nom: 'Adabiyot sinovi (Milliy sertifikat)' },
+  '🎓 Ona tili Milliy sertifikat': { key: 'ona_tili_milliy', nom: 'Ona tili sinovi (Milliy sertifikat)' },
   "🟢 A1-A2 (Boshlang'ich)": { key: 'cefr_a1_a2', nom: 'Ingliz tili CEFR sinovi' },
   "🟡 B1-B2 (O'rta)": { key: 'cefr_b1_b2', nom: "Ingliz tili CEFR sinovi (B1-B2)" },
   "🔴 C1-C2 (Yuqori)": { key: 'cefr_c1_c2', nom: "Ingliz tili CEFR sinovi (C1-C2)" }
