@@ -420,7 +420,10 @@ bot.on('message', (msg) => {
 
   if (mavzular[text]) {
     const { key, nom } = mavzular[text];
-    bot.sendMessage(chatId, `${nom} boshlanmoqda 👇`, {
+    const ogohlantirish = key.endsWith('_milliy')
+      ? "\n\n⚠️ Eslatma: bu taxminiy natija beruvchi mashq, rasmiy Milliy sertifikat imtihoni emas."
+      : '';
+    bot.sendMessage(chatId, `${nom} boshlanmoqda 👇${ogohlantirish}`, {
       reply_markup: {
         inline_keyboard: [
           [{ text: `${nom}ni boshlash`, web_app: { url: `${MINI_APP_URL}?mavzu=${key}&t=${Date.now()}` } }]
