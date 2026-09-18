@@ -35,20 +35,19 @@ if (fs.existsSync(USERS_FILE)) {
 
 
 
-// Bot nomini yangilash
+// Foydalanuvchilar sonini bot tavsifida ko‘rsatish
 async function updateBotName() {
   const count = users.size;
 
   try {
-    await bot.setMyName({
-      name: `Zehnly ${count}`,
-      language_code: ''
+    await bot.setMyShortDescription({
+      short_description: `${count} foydalanuvchi foydalanmoqda`
     });
 
-    console.log(`Bot nomi yangilandi: ${count}`);
+    console.log(`Bot tavsifi yangilandi: ${count}`);
   } catch (error) {
     console.error(
-      'Bot nomini yangilashda xato:',
+      'Bot tavsifini yangilashda xato:',
       error.message
     );
   }
