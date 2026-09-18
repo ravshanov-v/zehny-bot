@@ -1,7 +1,3 @@
-const fs = require('fs');
-
-
-
 require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -18,60 +14,13 @@ app.listen(PORT, () => {
 const TelegramBot = require('node-telegram-bot-api');
 
 const token = process.env.BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: false });
-
-async function startBot() {
-  try {
-    await bot.deleteWebHook();
-
-    await bot.startPolling();
-
-    console.log('Polling muvaffaqiyatli boshlandi');
-  } catch (error) {
-    console.error('Bot ishga tushirishda xato:', error.message);
-  }
-}
-
-startBot();
-
-// Foydalanuvchilarni saqlash
-const USERS_FILE = './users.json';
-
-let users = new Set();
-
-if (fs.existsSync(USERS_FILE)) {
-  const savedUsers = JSON.parse(
-    fs.readFileSync(USERS_FILE, 'utf8')
-  );
-
-  users = new Set(savedUsers);
-}
-
-
-
-// Foydalanuvchilar sonini bot tavsifida ko‘rsatish
-async function updateBotName() {
-  const count = users.size;
-
-  try {
-    await bot.setMyShortDescription(
-      `${count} foydalanuvchi foydalanmoqda`
-    );
-
-    console.log(`Bot tavsifi yangilandi: ${count}`);
-  } catch (error) {
-    console.error(
-      'Bot tavsifini yangilashda xato:',
-      error.message
-    );
-  }
-}
+const bot = new TelegramBot(token, { polling: true });
 
 const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 123456789; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
 
 const mainMenu = {
   reply_markup: {
@@ -332,20 +281,6 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-    // Yangi foydalanuvchini ro‘yxatga olish
-  const userId = msg.from?.id;
-
-  if (userId && !users.has(userId)) {
-    users.add(userId);
-
-    fs.writeFileSync(
-      USERS_FILE,
-      JSON.stringify([...users], null, 2)
-    );
-
-    updateBotName();
-  }
-  
   // ==== 1) TAKLIF BILDIRISH TUGMASI ====
   if (text === '📝 Taklif bildirish') {
     awaitingSuggestion.add(chatId);
@@ -510,6 +445,5 @@ process.on('unhandledRejection', (err) => {
 bot.on('polling_error', (err) => {
   console.error('Polling xatosi (dastur davom etadi):', err.message);
 });
-
 
 console.log("Bot ishga tushdi...");
