@@ -40,9 +40,9 @@ async function updateBotName() {
   const count = users.size;
 
   try {
-    await bot.setMyShortDescription({
-      short_description: `${count} foydalanuvchi foydalanmoqda`
-    });
+    await bot.setMyShortDescription(
+      `${count} foydalanuvchi foydalanmoqda`
+    );
 
     console.log(`Bot tavsifi yangilandi: ${count}`);
   } catch (error) {
