@@ -34,12 +34,16 @@ if (fs.existsSync(USERS_FILE)) {
 }
 
 
+
 // Bot nomini yangilash
 async function updateBotName() {
   const count = users.size;
 
   try {
-    await bot.setMyName(`Zehnly | ${count} foydalanuvchi`);
+    await bot.setMyName({
+      name: `Zehnly ${count}`,
+      language_code: ''
+    });
 
     console.log(`Bot nomi yangilandi: ${count}`);
   } catch (error) {
