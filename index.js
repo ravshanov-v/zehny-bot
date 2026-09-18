@@ -18,7 +18,21 @@ app.listen(PORT, () => {
 const TelegramBot = require('node-telegram-bot-api');
 
 const token = process.env.BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { polling: false });
+
+async function startBot() {
+  try {
+    await bot.deleteWebHook();
+
+    await bot.startPolling();
+
+    console.log('Polling muvaffaqiyatli boshlandi');
+  } catch (error) {
+    console.error('Bot ishga tushirishda xato:', error.message);
+  }
+}
+
+startBot();
 
 // Foydalanuvchilarni saqlash
 const USERS_FILE = './users.json';
@@ -496,6 +510,6 @@ process.on('unhandledRejection', (err) => {
 bot.on('polling_error', (err) => {
   console.error('Polling xatosi (dastur davom etadi):', err.message);
 });
-updateBotName();
+
 
 console.log("Bot ishga tushdi...");
