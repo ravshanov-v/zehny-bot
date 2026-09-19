@@ -21,7 +21,7 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 123456789; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
 
 // ==== REFERAL TIZIMI ====
 const USERS_FILE = './users.json';
@@ -383,11 +383,14 @@ bot.on('message', (msg) => {
   if (text === '🎁 Do\'stlarni taklif qilish') {
     const link = getReferralLink(chatId);
     const count = getReferralCount(chatId);
+    // DIQQAT: parse_mode ataylab ishlatilmagan — havolada "_" belgisi bor,
+    // Markdown buni kursiv belgisi deb hisoblab, xabarni yuborishdan bosh tortadi.
     bot.sendMessage(
       chatId,
-      `🎁 *Do'stlaringizni taklif qiling!*\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n👥 Hozirgacha taklif qilganlaringiz: *${count}* kishi`,
-      { parse_mode: 'Markdown' }
-    );
+      `🎁 Do'stlaringizni taklif qiling!\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n👥 Hozirgacha taklif qilganlaringiz: ${count} kishi`
+    ).catch((err) => {
+      console.error("Referal xabarini yuborishda xato:", err.message);
+    });
     return;
   }
 
