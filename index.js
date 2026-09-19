@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,7 +21,71 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 123456789; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+
+// ==== REFERAL TIZIMI ====
+const USERS_FILE = './users.json';
+const REFERRAL_BONUS_THRESHOLD = 3; // shuncha do'st taklif qilinsa, bonus xabari yuboriladi
+
+let botUsername = null; // bot.getMe() orqali ishga tushganda o'rnatiladi
+
+function loadUsers() {
+  try {
+    const raw = fs.readFileSync(USERS_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    return {}; // fayl yo'q yoki buzilgan bo'lsa, bo'sh obyekt qaytaramiz
+  }
+}
+
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  } catch (err) {
+    console.error('users.json ga yozishda xato:', err.message);
+  }
+}
+
+// Yangi foydalanuvchini ro'yxatga oladi va agar u kimningdir taklifi orqali kelgan bo'lsa,
+// taklif qiluvchining hisobini oshiradi. true/false qaytaradi — bonus tabriklash kerakmi.
+function registerUser(chatId, referrerId) {
+  const users = loadUsers();
+  const chatIdStr = String(chatId);
+
+  if (users[chatIdStr]) {
+    // foydalanuvchi allaqachon ro'yxatda — qayta hisoblanmaydi
+    return { isNew: false, referrerReachedBonus: false };
+  }
+
+  users[chatIdStr] = {
+    referredBy: referrerId ? String(referrerId) : null,
+    referralCount: 0,
+    joinedAt: new Date().toISOString(),
+  };
+
+  let referrerReachedBonus = false;
+
+  if (referrerId && referrerId !== chatIdStr && users[String(referrerId)]) {
+    users[String(referrerId)].referralCount += 1;
+    if (users[String(referrerId)].referralCount === REFERRAL_BONUS_THRESHOLD) {
+      referrerReachedBonus = true;
+    }
+  }
+
+  saveUsers(users);
+  return { isNew: true, referrerReachedBonus, referrerId };
+}
+
+function getReferralCount(chatId) {
+  const users = loadUsers();
+  const user = users[String(chatId)];
+  return user ? user.referralCount : 0;
+}
+
+function getReferralLink(chatId) {
+  const uname = botUsername || 'YourBotUsername';
+  return `https://t.me/${uname}?start=ref_${chatId}`;
+}
 
 const mainMenu = {
   reply_markup: {
@@ -29,6 +94,7 @@ const mainMenu = {
       ['📚 Maktab fanlari'],
       ['🌐 Tillar'],
       ["💻 IT yo'nalishlari"],
+      ['🎁 Do\'stlarni taklif qilish'],
       ['📝 Taklif bildirish']
     ],
     resize_keyboard: true
@@ -213,8 +279,40 @@ const itMenu = {
   }
 };
 
-bot.onText(/\/start/, (msg) => {
+bot.getMe().then((info) => {
+  botUsername = info.username;
+  console.log(`Bot username aniqlandi: @${botUsername}`);
+}).catch((err) => {
+  console.error("Bot username'ni olishda xato:", err.message);
+});
+
+bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
   const chatId = msg.chat.id;
+  const payload = match && match[1] ? match[1].trim() : null;
+
+  let referrerId = null;
+  if (payload && payload.startsWith('ref_')) {
+    referrerId = payload.replace('ref_', '');
+  }
+
+  const result = registerUser(chatId, referrerId);
+
+  if (result.isNew && result.referrerId) {
+    // Taklif qilgan odamga xabar yuboramiz
+    const newCount = getReferralCount(result.referrerId);
+    bot.sendMessage(
+      result.referrerId,
+      `🎉 Sizning taklifingiz orqali yangi foydalanuvchi botga qo'shildi!\nJami taklif qilganlaringiz: ${newCount} ta`
+    ).catch(() => {}); // agar referrer botni bloklagan bo'lsa, xato chiqmasin
+
+    if (result.referrerReachedBonus) {
+      bot.sendMessage(
+        result.referrerId,
+        `🏆 Tabriklaymiz! Siz ${REFERRAL_BONUS_THRESHOLD} ta do'stingizni taklif qildingiz.\nSizga maxsus bonus tayyorladik — tez orada bog'lanamiz! 🎁`
+      ).catch(() => {});
+    }
+  }
+
   bot.sendMessage(chatId, "Salom! Men *Zehnly* botman 🤖\nQaysi guruhdan boshlaymiz?", {
     ...mainMenu,
     parse_mode: 'Markdown'
@@ -280,6 +378,18 @@ const tayyorEmasMavzular = [
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
+
+  // ==== 0) DO'STLARNI TAKLIF QILISH TUGMASI ====
+  if (text === '🎁 Do\'stlarni taklif qilish') {
+    const link = getReferralLink(chatId);
+    const count = getReferralCount(chatId);
+    bot.sendMessage(
+      chatId,
+      `🎁 *Do'stlaringizni taklif qiling!*\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n👥 Hozirgacha taklif qilganlaringiz: *${count}* kishi`,
+      { parse_mode: 'Markdown' }
+    );
+    return;
+  }
 
   // ==== 1) TAKLIF BILDIRISH TUGMASI ====
   if (text === '📝 Taklif bildirish') {
