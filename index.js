@@ -46,9 +46,18 @@ function saveUsers(users) {
   }
 }
 
+// Foydalanuvchining chiroyli ko'rinadigan ismini tuzadi (ism + familiya, bo'lsa)
+function buildDisplayName(fromObj) {
+  const first = fromObj.first_name || '';
+  const last = fromObj.last_name || '';
+  const full = `${first} ${last}`.trim();
+  return full || 'Foydalanuvchi';
+}
+
 // Yangi foydalanuvchini ro'yxatga oladi va agar u kimningdir taklifi orqali kelgan bo'lsa,
-// taklif qiluvchining hisobini oshiradi. true/false qaytaradi — bonus tabriklash kerakmi.
-function registerUser(chatId, referrerId) {
+// taklif qiluvchining hisobini va taklif qilinganlar ro'yxatini yangilaydi.
+// true/false qaytaradi — bonus tabriklash kerakmi.
+function registerUser(chatId, referrerId, newUserInfo) {
   const users = loadUsers();
   const chatIdStr = String(chatId);
 
@@ -60,14 +69,29 @@ function registerUser(chatId, referrerId) {
   users[chatIdStr] = {
     referredBy: referrerId ? String(referrerId) : null,
     referralCount: 0,
+    referredUsers: [], // {chatId, name, username, joinedAt} — shu odam kimlarni taklif qilgani
     joinedAt: new Date().toISOString(),
   };
 
   let referrerReachedBonus = false;
 
   if (referrerId && referrerId !== chatIdStr && users[String(referrerId)]) {
-    users[String(referrerId)].referralCount += 1;
-    if (users[String(referrerId)].referralCount === REFERRAL_BONUS_THRESHOLD) {
+    const referrer = users[String(referrerId)];
+    referrer.referralCount += 1;
+
+    // Eski foydalanuvchilarda referredUsers maydoni bo'lmasligi mumkin — moslashtiramiz
+    if (!Array.isArray(referrer.referredUsers)) {
+      referrer.referredUsers = [];
+    }
+
+    referrer.referredUsers.push({
+      chatId: chatIdStr,
+      name: newUserInfo ? newUserInfo.name : 'Foydalanuvchi',
+      username: newUserInfo && newUserInfo.username ? newUserInfo.username : null,
+      joinedAt: new Date().toISOString(),
+    });
+
+    if (referrer.referralCount === REFERRAL_BONUS_THRESHOLD) {
       referrerReachedBonus = true;
     }
   }
@@ -80,6 +104,14 @@ function getReferralCount(chatId) {
   const users = loadUsers();
   const user = users[String(chatId)];
   return user ? user.referralCount : 0;
+}
+
+// Taklif qilingan do'stlar ro'yxatini qaytaradi (eng yangisi birinchi)
+function getReferredUsersList(chatId) {
+  const users = loadUsers();
+  const user = users[String(chatId)];
+  if (!user || !Array.isArray(user.referredUsers)) return [];
+  return [...user.referredUsers].reverse();
 }
 
 function getReferralLink(chatId) {
@@ -307,14 +339,23 @@ bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
     referrerId = payload.replace('ref_', '');
   }
 
-  const result = registerUser(chatId, referrerId);
+  const newUserInfo = {
+    name: buildDisplayName(msg.from),
+    username: msg.from.username ? `@${msg.from.username}` : null,
+  };
+
+  const result = registerUser(chatId, referrerId, newUserInfo);
 
   if (result.isNew && result.referrerId) {
-    // Taklif qilgan odamga xabar yuboramiz
+    // Taklif qilgan odamga, YANGI QO'SHILGAN DO'STINING ISMI bilan xabar yuboramiz
     const newCount = getReferralCount(result.referrerId);
+    const joinerLabel = newUserInfo.username
+      ? `${newUserInfo.name} (${newUserInfo.username})`
+      : newUserInfo.name;
+
     bot.sendMessage(
       result.referrerId,
-      `🎉 Sizning taklifingiz orqali yangi foydalanuvchi botga qo'shildi!\nJami taklif qilganlaringiz: ${newCount} ta`
+      `🎉 Sizning taklifingiz orqali yangi foydalanuvchi botga qo'shildi!\n👤 Kim: ${joinerLabel}\n📊 Jami taklif qilganlaringiz: ${newCount} ta`
     ).catch(() => {}); // agar referrer botni bloklagan bo'lsa, xato chiqmasin
 
     if (result.referrerReachedBonus) {
@@ -399,11 +440,23 @@ bot.on('message', (msg) => {
   if (text === '🎁 Do\'stlarni taklif qilish') {
     const link = getReferralLink(chatId);
     const count = getReferralCount(chatId);
+    const referredList = getReferredUsersList(chatId);
+
+    let ro_yxatMatni = '';
+    if (referredList.length > 0) {
+      const oxirgilar = referredList.slice(0, 10).map((u, i) => {
+        const label = u.username ? `${u.name} (${u.username})` : u.name;
+        return `${i + 1}. ${label}`;
+      }).join('\n');
+      const qolganlar = referredList.length > 10 ? `\n...va yana ${referredList.length - 10} kishi` : '';
+      ro_yxatMatni = `\n\n👥 Taklif qilganlaringiz:\n${oxirgilar}${qolganlar}`;
+    }
+
     // DIQQAT: parse_mode ataylab ishlatilmagan — havolada "_" belgisi bor,
     // Markdown buni kursiv belgisi deb hisoblab, xabarni yuborishdan bosh tortadi.
     bot.sendMessage(
       chatId,
-      `🎁 Do'stlaringizni taklif qiling!\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n👥 Hozirgacha taklif qilganlaringiz: ${count} kishi`
+      `🎁 Do'stlaringizni taklif qiling!\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n📊 Hozirgacha taklif qilganlaringiz: ${count} kishi${ro_yxatMatni}`
     ).catch((err) => {
       console.error("Referal xabarini yuborishda xato:", err.message);
     });
@@ -428,12 +481,12 @@ bot.on('message', (msg) => {
       return;
     }
 
-    const userName = msg.from.first_name || 'Foydalanuvchi';
-    const username = msg.from.username ? `@${msg.from.username}` : `ID: ${chatId}`;
+    const userName = buildDisplayName(msg.from);
+    const usernameLabel = msg.from.username ? `@${msg.from.username}` : "username yo'q";
 
     bot.sendMessage(
       ADMIN_CHAT_ID,
-      `📩 Yangi taklif!\n\n👤 Kimdan: ${userName} (${username})\n\n💬 Matn:\n${text}`
+      `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}\n\n💬 Matn:\n${text}`
     );
 
     awaitingSuggestion.delete(chatId);
