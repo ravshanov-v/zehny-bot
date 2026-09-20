@@ -21,7 +21,7 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- BU YERGA O'ZINGIZNING chat_id'INGIZNI QO'YING (@userinfobot dan oling)
+const ADMIN_CHAT_ID = 7483038020; // <-- Sizning chat_id'ingiz
 
 // ==== REFERAL TIZIMI ====
 const USERS_FILE = './users.json';
@@ -118,8 +118,20 @@ const schoolMenu = {
       ['📜 Tarix sinovi', '➗ Matematika sinovi'],
       ['⚛️ Fizika sinovi', '🧪 Kimyo sinovi'],
       ['🧬 Biologiya sinovi', '📖 Adabiyot sinovi'],
-      ['✍️ Ona tili sinovi'],
+      ['✍️ Ona tili sinovi', '🌍 Geografiya sinovi'],
       ['⬅️ Orqaga']
+    ],
+    resize_keyboard: true
+  }
+};
+
+const geografiyaLevelMenu = {
+  reply_markup: {
+    keyboard: [
+      ['🟢 Geografiya 5-7 sinf', '🟡 Geografiya 7-9 sinf'],
+      ['🔴 Geografiya 9-11 sinf'],
+      ['🎓 Geografiya Milliy sertifikat'],
+      ['⬅️ Fanga qaytish']
     ],
     resize_keyboard: true
   }
@@ -345,6 +357,10 @@ const mavzular = {
   '🟢 Ona tili 5-7 sinf': { key: 'ona_tili_5_7', nom: 'Ona tili sinovi (5-7 sinf)' },
   '🟡 Ona tili 7-9 sinf': { key: 'ona_tili_7_9', nom: 'Ona tili sinovi (7-9 sinf)' },
   '🔴 Ona tili 9-11 sinf': { key: 'ona_tili_9_11', nom: 'Ona tili sinovi (9-11 sinf)' },
+  '🟢 Geografiya 5-7 sinf': { key: 'geografiya_5_7', nom: 'Geografiya sinovi (5-7 sinf)' },
+  '🟡 Geografiya 7-9 sinf': { key: 'geografiya_7_9', nom: 'Geografiya sinovi (7-9 sinf)' },
+  '🔴 Geografiya 9-11 sinf': { key: 'geografiya_9_11', nom: 'Geografiya sinovi (9-11 sinf)' },
+  '🎓 Geografiya Milliy sertifikat': { key: 'geografiya_milliy', nom: 'Geografiya sinovi (Milliy sertifikat)' },
   '🎨 Frontend sinovi': { key: 'frontend', nom: 'Frontend sinovi' },
   '⚙️ Backend sinovi': { key: 'backend', nom: 'Backend sinovi' },
   '📱 Mobil dasturlash sinovi': { key: 'mobil', nom: 'Mobil dasturlash sinovi' },
@@ -478,6 +494,11 @@ bot.on('message', (msg) => {
 
   if (text === '✍️ Ona tili sinovi') {
     bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", onaTiliLevelMenu);
+    return;
+  }
+
+  if (text === '🌍 Geografiya sinovi') {
+    bot.sendMessage(chatId, "Qaysi daraja uchun sinovni xohlaysiz?", geografiyaLevelMenu);
     return;
   }
 
