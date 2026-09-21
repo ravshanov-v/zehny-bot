@@ -483,11 +483,19 @@ bot.on('message', (msg) => {
 
     const userName = buildDisplayName(msg.from);
     const usernameLabel = msg.from.username ? `@${msg.from.username}` : "username yo'q";
+    const infoBoshi = `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}`;
 
-    bot.sendMessage(
-      ADMIN_CHAT_ID,
-      `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}\n\n💬 Matn:\n${text}`
-    );
+    if (text) {
+      // Oddiy matnli taklif
+      bot.sendMessage(ADMIN_CHAT_ID, `${infoBoshi}\n\n💬 Matn:\n${text}`);
+    } else {
+      // Rasm, video, hujjat, ovozli xabar va hokazo — asl xabarni forward qilamiz,
+      // shunda admin rasm/faylni to'liq sifatda ko'radi, so'ng kim yuborganini alohida yozamiz
+      bot.forwardMessage(ADMIN_CHAT_ID, chatId, msg.message_id).catch((err) => {
+        console.error("Forward qilishda xato:", err.message);
+      });
+      bot.sendMessage(ADMIN_CHAT_ID, `${infoBoshi}\n\n💬 Matn: (yuqorida rasm/media yuborildi 👆)`);
+    }
 
     awaitingSuggestion.delete(chatId);
     bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu);
