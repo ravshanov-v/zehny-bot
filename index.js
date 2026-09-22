@@ -32,6 +32,11 @@ const suggestionBuffers = new Map();
 const SUGGESTION_DEBOUNCE_MS = 1200; // shuncha vaqt yangi xabar kelmasa, "burst" tugagan hisoblanadi
 const FORWARD_DELAY_MS = 350; // ketma-ket forwardlar orasidagi pauza (rate-limitga tushmaslik uchun)
 
+// Tanilmagan xabar(lar) uchun "tushunmadim" javobini bir nechta rasm/xabar
+// bittada kelganda ham FAQAT BIR MARTA yuborish uchun debounce. chatId -> timeout
+const fallbackTimers = new Map();
+const FALLBACK_DEBOUNCE_MS = 800;
+
 // messageIds ro'yxatidagi har bir xabarni birma-bir, orasida kichik pauza bilan forward qiladi.
 // Barchasi tugagach onComplete() chaqiriladi. Shu tarzda nechta yuborilgan bo'lsa, xuddi
 // shuncha (kamroq emas) adminga yetib borishi kafolatlanadi.
@@ -485,6 +490,16 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
+  // Agar oldingi tanilmagan xabar(lar) uchun "tushunmadim" javobi kutilayotgan bo'lsa,
+  // uni tozalaymiz — agar bu xabar ham tanilmasa, pastdagi fallback qismi qayta o'rnatadi;
+  // agar tanilsa (masalan, foydalanuvchi endi to'g'ri tugmani bossa), eski xabar
+  // kechikib kelib qolmaydi.
+  const pendingFallback = fallbackTimers.get(chatId);
+  if (pendingFallback) {
+    clearTimeout(pendingFallback);
+    fallbackTimers.delete(chatId);
+  }
+
   // ==== 0) DO'STLARNI TAKLIF QILISH TUGMASI ====
   if (text === '🎁 Do\'stlarni taklif qilish') {
     const link = getReferralLink(chatId);
@@ -679,16 +694,27 @@ bot.on('message', (msg) => {
   }
 
   // ==== HECH QAYSI TUGMAGA/HOLATGA MOS KELMAGAN XABAR ====
-  // Foydalanuvchi menyuda yo'q so'z yozsa yoki tasodifiy rasm/fayl yuborsa
+  // Foydalanuvchi menyuda yo'q so'z yozsa yoki tasodifiy rasm/fayl(lar) yuborsa
   // (taklif rejimida bo'lmasa), botni "o'lik" his qildirmaslik uchun javob qaytaramiz.
   // DIQQAT: "/" bilan boshlanadigan buyruqlar (masalan /start) bu yerga tushmasligi kerak —
   // ular alohida bot.onText orqali ishlanadi, aks holda ikkita xabar birdan ketadi.
+  // Bir nechta rasm/xabar bittada (albom sifatida) yuborilsa ham, javob FAQAT BIR MARTA
+  // (burst tugagach) yuborilishi uchun debounce qilamiz — aks holda har rasmga alohida
+  // "tushunmadim" javobi qaytib, chatni to'ldirib yuboradi.
   if (!text || !text.startsWith('/')) {
-    bot.sendMessage(
-      chatId,
-      "🤔 Kechirasiz, bu buyruqni tushunmadim.\nIltimos, quyidagi tugmalardan birini tanlang 👇",
-      mainMenu
-    );
+    const existingTimer = fallbackTimers.get(chatId);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    const timer = setTimeout(() => {
+      fallbackTimers.delete(chatId);
+      bot.sendMessage(
+        chatId,
+        "🤔 Kechirasiz, bu buyruqni tushunmadim.\nIltimos, quyidagi tugmalardan birini tanlang 👇",
+        mainMenu
+      ).catch(() => {});
+    }, FALLBACK_DEBOUNCE_MS);
+
+    fallbackTimers.set(chatId, timer);
   }
 });
 
