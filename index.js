@@ -23,6 +23,55 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 const awaitingSuggestion = new Set();
 const ADMIN_CHAT_ID = 7483038020; // <-- Sizning chat_id'ingiz
 
+// Bir nechta rasm/media/matn bittada (masalan albom sifatida) yuborilsa,
+// barchasining message_id'sini yig'ib olamiz, so'ng hammasi kelib bo'lgach
+// KETMA-KET forward qilamiz (Telegram tezlik chegarasiga tushib, ba'zilari
+// "yutilib" ketmasligi uchun) va javobni FAQAT BIR MARTA beramiz.
+// chatId -> { timeout, messageIds: number[] }
+const suggestionBuffers = new Map();
+const SUGGESTION_DEBOUNCE_MS = 1200; // shuncha vaqt yangi xabar kelmasa, "burst" tugagan hisoblanadi
+const FORWARD_DELAY_MS = 350; // ketma-ket forwardlar orasidagi pauza (rate-limitga tushmaslik uchun)
+
+// messageIds ro'yxatidagi har bir xabarni birma-bir, orasida kichik pauza bilan forward qiladi.
+// Barchasi tugagach onComplete() chaqiriladi. Shu tarzda nechta yuborilgan bo'lsa, xuddi
+// shuncha (kamroq emas) adminga yetib borishi kafolatlanadi.
+function forwardSequentially(chatId, messageIds, index, onComplete) {
+  if (index >= messageIds.length) {
+    onComplete();
+    return;
+  }
+  bot.forwardMessage(ADMIN_CHAT_ID, chatId, messageIds[index])
+    .catch((err) => {
+      console.error(`Forward qilishda xato (message_id=${messageIds[index]}):`, err.message);
+    })
+    .finally(() => {
+      setTimeout(() => forwardSequentially(chatId, messageIds, index + 1, onComplete), FORWARD_DELAY_MS);
+    });
+}
+
+function finalizeSuggestion(chatId, fromObj, messageIds) {
+  suggestionBuffers.delete(chatId);
+  awaitingSuggestion.delete(chatId);
+
+  const count = messageIds.length;
+  const userName = buildDisplayName(fromObj);
+  const usernameLabel = fromObj.username ? `@${fromObj.username}` : "username yo'q";
+
+  // Avval HAMMASINI ketma-ket forward qilamiz, faqat shundan keyin
+  // umumiy ma'lumot va tasdiq xabarlarini yuboramiz — shu bilan admin
+  // "nechta yuborilgan" sonini forward tugagach aniq ko'radi.
+  forwardSequentially(chatId, messageIds, 0, () => {
+    const nechtaXabar = count > 1 ? `\n📦 Yuborilgan xabarlar/media soni: ${count} ta` : '';
+
+    bot.sendMessage(
+      ADMIN_CHAT_ID,
+      `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}${nechtaXabar}\n\n💬 Yuqorida xabar(lar)/media forward qilindi 👆`
+    ).catch(() => {});
+
+    bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu).catch(() => {});
+  });
+}
+
 // ==== REFERAL TIZIMI ====
 const USERS_FILE = './users.json';
 const REFERRAL_BONUS_THRESHOLD = 3; // shuncha do'st taklif qilinsa, bonus xabari yuboriladi
@@ -476,29 +525,30 @@ bot.on('message', (msg) => {
   // ==== 2) FOYDALANUVCHI TAKLIF YOZAYOTGAN HOLATDA BO'LSA ====
   if (awaitingSuggestion.has(chatId)) {
     if (text === '/cancel') {
+      const buffer = suggestionBuffers.get(chatId);
+      if (buffer) clearTimeout(buffer.timeout);
+      suggestionBuffers.delete(chatId);
       awaitingSuggestion.delete(chatId);
       bot.sendMessage(chatId, "Bekor qilindi.", mainMenu);
       return;
     }
 
-    const userName = buildDisplayName(msg.from);
-    const usernameLabel = msg.from.username ? `@${msg.from.username}` : "username yo'q";
-    const infoBoshi = `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}`;
-
-    if (text) {
-      // Oddiy matnli taklif
-      bot.sendMessage(ADMIN_CHAT_ID, `${infoBoshi}\n\n💬 Matn:\n${text}`);
+    // Nima yuborilishidan qat'iy nazar (matn, rasm, video, hujjat, ovozli xabar,
+    // stiker, lokatsiya va h.k.) — message_id'sini ro'yxatga qo'shib qo'yamiz.
+    // Forward qilish esa "burst" (bittada yuborilgan bir nechta xabar) tugagach,
+    // finalizeSuggestion ichida ketma-ket amalga oshiriladi — shunda hech biri tushib qolmaydi.
+    let buffer = suggestionBuffers.get(chatId);
+    if (buffer) {
+      clearTimeout(buffer.timeout);
+      buffer.messageIds.push(msg.message_id);
     } else {
-      // Rasm, video, hujjat, ovozli xabar va hokazo — asl xabarni forward qilamiz,
-      // shunda admin rasm/faylni to'liq sifatda ko'radi, so'ng kim yuborganini alohida yozamiz
-      bot.forwardMessage(ADMIN_CHAT_ID, chatId, msg.message_id).catch((err) => {
-        console.error("Forward qilishda xato:", err.message);
-      });
-      bot.sendMessage(ADMIN_CHAT_ID, `${infoBoshi}\n\n💬 Matn: (yuqorida rasm/media yuborildi 👆)`);
+      buffer = { messageIds: [msg.message_id] };
     }
-
-    awaitingSuggestion.delete(chatId);
-    bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu);
+    buffer.timeout = setTimeout(
+      () => finalizeSuggestion(chatId, msg.from, buffer.messageIds),
+      SUGGESTION_DEBOUNCE_MS
+    );
+    suggestionBuffers.set(chatId, buffer);
     return;
   }
 
