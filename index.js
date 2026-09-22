@@ -627,6 +627,19 @@ bot.on('message', (msg) => {
     });
     return;
   }
+
+  // ==== HECH QAYSI TUGMAGA/HOLATGA MOS KELMAGAN XABAR ====
+  // Foydalanuvchi menyuda yo'q so'z yozsa yoki tasodifiy rasm/fayl yuborsa
+  // (taklif rejimida bo'lmasa), botni "o'lik" his qildirmaslik uchun javob qaytaramiz.
+  // DIQQAT: "/" bilan boshlanadigan buyruqlar (masalan /start) bu yerga tushmasligi kerak —
+  // ular alohida bot.onText orqali ishlanadi, aks holda ikkita xabar birdan ketadi.
+  if (!text || !text.startsWith('/')) {
+    bot.sendMessage(
+      chatId,
+      "🤔 Kechirasiz, bu buyruqni tushunmadim.\nIltimos, quyidagi tugmalardan birini tanlang 👇",
+      mainMenu
+    );
+  }
 });
 
 process.on('uncaughtException', (err) => {
