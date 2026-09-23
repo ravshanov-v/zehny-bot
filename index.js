@@ -23,34 +23,27 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 const awaitingSuggestion = new Set();
 const ADMIN_CHAT_ID = 7483038020; // <-- Sizning chat_id'ingiz
 
-// Bir nechta rasm/media/matn bittada (masalan albom sifatida) yuborilsa,
-// barchasining message_id'sini yig'ib olamiz, so'ng hammasi kelib bo'lgach
-// KETMA-KET forward qilamiz (Telegram tezlik chegarasiga tushib, ba'zilari
-// "yutilib" ketmasligi uchun) va javobni FAQAT BIR MARTA beramiz.
-// chatId -> { timeout, messageIds: number[] }
 const suggestionBuffers = new Map();
-const SUGGESTION_DEBOUNCE_MS = 1200; // shuncha vaqt yangi xabar kelmasa, "burst" tugagan hisoblanadi
-const FORWARD_DELAY_MS = 350; // ketma-ket forwardlar orasidagi pauza (rate-limitga tushmaslik uchun)
+const SUGGESTION_DEBOUNCE_MS = 1200; 
+const FORWARD_DELAY_MS = 350; 
 
-// Tanilmagan xabar(lar) uchun "tushunmadim" javobini bir nechta rasm/xabar
-// bittada kelganda ham FAQAT BIR MARTA yuborish uchun debounce. chatId -> timeout
 const fallbackTimers = new Map();
 const FALLBACK_DEBOUNCE_MS = 800;
 
-// messageIds ro'yxatidagi har bir xabarni birma-bir, orasida kichik pauza bilan forward qiladi.
-// Barchasi tugagach onComplete() chaqiriladi. Shu tarzda nechta yuborilgan bo'lsa, xuddi
-// shuncha (kamroq emas) adminga yetib borishi kafolatlanadi.
-function forwardSequentially(chatId, messageIds, index, onComplete) {
+function forwardSequentially(chatId, messageIds, index, forwardedMsgIds = [], onComplete) {
   if (index >= messageIds.length) {
-    onComplete();
+    onComplete(forwardedMsgIds);
     return;
   }
   bot.forwardMessage(ADMIN_CHAT_ID, chatId, messageIds[index])
+    .then((fwdMsg) => {
+      forwardedMsgIds.push(fwdMsg.message_id);
+    })
     .catch((err) => {
       console.error(`Forward qilishda xato (message_id=${messageIds[index]}):`, err.message);
     })
     .finally(() => {
-      setTimeout(() => forwardSequentially(chatId, messageIds, index + 1, onComplete), FORWARD_DELAY_MS);
+      setTimeout(() => forwardSequentially(chatId, messageIds, index + 1, forwardedMsgIds, onComplete), FORWARD_DELAY_MS);
     });
 }
 
@@ -62,33 +55,84 @@ function finalizeSuggestion(chatId, fromObj, messageIds) {
   const userName = buildDisplayName(fromObj);
   const usernameLabel = fromObj.username ? `@${fromObj.username}` : "username yo'q";
 
-  // Avval HAMMASINI ketma-ket forward qilamiz, faqat shundan keyin
-  // umumiy ma'lumot va tasdiq xabarlarini yuboramiz — shu bilan admin
-  // "nechta yuborilgan" sonini forward tugagach aniq ko'radi.
-  forwardSequentially(chatId, messageIds, 0, () => {
+  forwardSequentially(chatId, messageIds, 0, [], (forwardedMsgIds) => {
     const nechtaXabar = count > 1 ? `\n📦 Yuborilgan xabarlar/media soni: ${count} ta` : '';
+    
+    // Admin xabarni Reply qilishga qulay bo'lishi uchun oxirgi forward xabariga biriktiramiz
+    const lastForwardId = forwardedMsgIds.length > 0 ? forwardedMsgIds[forwardedMsgIds.length - 1] : null;
+    const options = lastForwardId ? { reply_to_message_id: lastForwardId } : {};
 
     bot.sendMessage(
       ADMIN_CHAT_ID,
-      `📩 Yangi taklif!\n\n👤 Ism: ${userName}\n🔗 Username: ${usernameLabel}\n🆔 ID: ${chatId}\n🕒 Vaqt: ${new Date().toLocaleString('uz-UZ')}${nechtaXabar}\n\n💬 Yuqorida xabar(lar)/media forward qilindi 👆`
+      `📩 **Yangi taklif!**\n\n👤 **Ism:** ${userName}\n🔗 **Username:** ${usernameLabel}\n🆔 **ID:** \`${chatId}\`\n🕒 **Vaqt:** ${new Date().toLocaleString('uz-UZ')}${nechtaXabar}\n\n💬 _Ushbu taklifga javob berish uchun shu xabarga yoki yuqoridagi forward qilingan xabarga Reply (Ответить) qiling._`,
+      { parse_mode: 'Markdown', ...options }
     ).catch(() => {});
 
+    // Foydalanuvchiga har doimgidek avtomatik ravishda rahmat xabari boradi
     bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu).catch(() => {});
   });
 }
 
+// ==== ADMIN REPLYSINI USHLASH (ADMIN FOYDALANUVCHIGA JAVOB YOZGANDA) ====
+bot.on('message', (msg) => {
+  // Faqat adminga va Reply qilingan xabarlarga tegishli
+  if (msg.chat.id === ADMIN_CHAT_ID && msg.reply_to_message) {
+    const replyTo = msg.reply_to_message;
+    let targetUserId = null;
+
+    // 1. Agar admin bot yuborgan xabarga reply qilgan bo'lsa (ID text ichida bo'ladi)
+    if (replyTo.text || replyTo.caption) {
+      const textContent = replyTo.text || replyTo.caption;
+      const match = textContent.match(/🆔 \*\*ID:\*\* `?(\d+)`?/i) || textContent.match(/ID: (\d+)/i);
+      if (match && match[1]) {
+        targetUserId = match[1];
+      }
+    }
+
+    // 2. Agar admin to'g'ridan-to'g'ri forward qilingan xabarning o'ziga reply qilgan bo'lsa
+    if (!targetUserId && replyTo.forward_from) {
+      targetUserId = replyTo.forward_from.id;
+    }
+
+    // Topilgan bo'lsa, xabarni foydalanuvchiga yuboramiz
+    if (targetUserId) {
+      // Agar admin xabar yozgan bo'lsa:
+      if (msg.text) {
+        bot.sendMessage(
+          targetUserId,
+          `💬 **Admindan javob:**\n\n${msg.text}`,
+          { parse_mode: 'Markdown' }
+        ).then(() => {
+          bot.sendMessage(ADMIN_CHAT_ID, "✅ Javobingiz foydalanuvchiga yetkazildi!");
+        }).catch((err) => {
+          bot.sendMessage(ADMIN_CHAT_ID, `❌ Javob yuborishda xatolik (foydalanuvchi botni bloklagan bo'lishi mumkin): ${err.message}`);
+        });
+      } else {
+        // Agar admin rasm, audio yoki boshqa fayl yuborsa — shunchaki forward qiladi
+        bot.copyMessage(targetUserId, ADMIN_CHAT_ID, msg.message_id)
+          .then(() => {
+            bot.sendMessage(ADMIN_CHAT_ID, "✅ Javobingiz foydalanuvchiga yetkazildi!");
+          })
+          .catch((err) => {
+            bot.sendMessage(ADMIN_CHAT_ID, `❌ Xatolik: ${err.message}`);
+          });
+      }
+    }
+  }
+});
+
 // ==== REFERAL TIZIMI ====
 const USERS_FILE = './users.json';
-const REFERRAL_BONUS_THRESHOLD = 3; // shuncha do'st taklif qilinsa, bonus xabari yuboriladi
+const REFERRAL_BONUS_THRESHOLD = 3; 
 
-let botUsername = null; // bot.getMe() orqali ishga tushganda o'rnatiladi
+let botUsername = null; 
 
 function loadUsers() {
   try {
     const raw = fs.readFileSync(USERS_FILE, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
-    return {}; // fayl yo'q yoki buzilgan bo'lsa, bo'sh obyekt qaytaramiz
+    return {}; 
   }
 }
 
@@ -100,7 +144,6 @@ function saveUsers(users) {
   }
 }
 
-// Foydalanuvchining chiroyli ko'rinadigan ismini tuzadi (ism + familiya, bo'lsa)
 function buildDisplayName(fromObj) {
   const first = fromObj.first_name || '';
   const last = fromObj.last_name || '';
@@ -108,22 +151,18 @@ function buildDisplayName(fromObj) {
   return full || 'Foydalanuvchi';
 }
 
-// Yangi foydalanuvchini ro'yxatga oladi va agar u kimningdir taklifi orqali kelgan bo'lsa,
-// taklif qiluvchining hisobini va taklif qilinganlar ro'yxatini yangilaydi.
-// true/false qaytaradi — bonus tabriklash kerakmi.
 function registerUser(chatId, referrerId, newUserInfo) {
   const users = loadUsers();
   const chatIdStr = String(chatId);
 
   if (users[chatIdStr]) {
-    // foydalanuvchi allaqachon ro'yxatda — qayta hisoblanmaydi
     return { isNew: false, referrerReachedBonus: false };
   }
 
   users[chatIdStr] = {
     referredBy: referrerId ? String(referrerId) : null,
     referralCount: 0,
-    referredUsers: [], // {chatId, name, username, joinedAt} — shu odam kimlarni taklif qilgani
+    referredUsers: [], 
     joinedAt: new Date().toISOString(),
   };
 
@@ -133,7 +172,6 @@ function registerUser(chatId, referrerId, newUserInfo) {
     const referrer = users[String(referrerId)];
     referrer.referralCount += 1;
 
-    // Eski foydalanuvchilarda referredUsers maydoni bo'lmasligi mumkin — moslashtiramiz
     if (!Array.isArray(referrer.referredUsers)) {
       referrer.referredUsers = [];
     }
@@ -160,7 +198,6 @@ function getReferralCount(chatId) {
   return user ? user.referralCount : 0;
 }
 
-// Taklif qilingan do'stlar ro'yxatini qaytaradi (eng yangisi birinchi)
 function getReferredUsersList(chatId) {
   const users = loadUsers();
   const user = users[String(chatId)];
@@ -270,7 +307,6 @@ const kimyoLevelMenu = {
   }
 };
 
-// DIQQAT: bu tugmalar mavzular lug'atidagi kalitlar bilan ANIQ mos bo'lishi shart
 const biologiyaLevelMenu = {
   reply_markup: {
     keyboard: [
@@ -318,7 +354,6 @@ const languagesMenu = {
   }
 };
 
-// DIQQAT: "Umumiy sinov" tugmasi mavzular lug'atidagi kalit bilan mos bo'lishi shart
 const inglizMenu = {
   reply_markup: {
     keyboard: [
@@ -401,7 +436,6 @@ bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
   const result = registerUser(chatId, referrerId, newUserInfo);
 
   if (result.isNew && result.referrerId) {
-    // Taklif qilgan odamga, YANGI QO'SHILGAN DO'STINING ISMI bilan xabar yuboramiz
     const newCount = getReferralCount(result.referrerId);
     const joinerLabel = newUserInfo.username
       ? `${newUserInfo.name} (${newUserInfo.username})`
@@ -410,7 +444,7 @@ bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
     bot.sendMessage(
       result.referrerId,
       `🎉 Sizning taklifingiz orqali yangi foydalanuvchi botga qo'shildi!\n👤 Kim: ${joinerLabel}\n📊 Jami taklif qilganlaringiz: ${newCount} ta`
-    ).catch(() => {}); // agar referrer botni bloklagan bo'lsa, xato chiqmasin
+    ).catch(() => {});
 
     if (result.referrerReachedBonus) {
       bot.sendMessage(
@@ -482,18 +516,17 @@ const mavzular = {
   "🔴 C1-C2 (Yuqori)": { key: 'cefr_c1_c2', nom: "Ingliz tili CEFR sinovi (C1-C2)" }
 };
 
-const tayyorEmasMavzular = [
-
-];
+const tayyorEmasMavzular = [];
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  // Agar oldingi tanilmagan xabar(lar) uchun "tushunmadim" javobi kutilayotgan bo'lsa,
-  // uni tozalaymiz — agar bu xabar ham tanilmasa, pastdagi fallback qismi qayta o'rnatadi;
-  // agar tanilsa (masalan, foydalanuvchi endi to'g'ri tugmani bossa), eski xabar
-  // kechikib kelib qolmaydi.
+  // Adminga doir xabarlar va Reply xabarlarni asosiy menyuga aralashtirmaymiz
+  if (chatId === ADMIN_CHAT_ID && msg.reply_to_message) {
+    return;
+  }
+
   const pendingFallback = fallbackTimers.get(chatId);
   if (pendingFallback) {
     clearTimeout(pendingFallback);
@@ -516,8 +549,6 @@ bot.on('message', (msg) => {
       ro_yxatMatni = `\n\n👥 Taklif qilganlaringiz:\n${oxirgilar}${qolganlar}`;
     }
 
-    // DIQQAT: parse_mode ataylab ishlatilmagan — havolada "_" belgisi bor,
-    // Markdown buni kursiv belgisi deb hisoblab, xabarni yuborishdan bosh tortadi.
     bot.sendMessage(
       chatId,
       `🎁 Do'stlaringizni taklif qiling!\n\nHar bir taklif qilingan do'stingiz uchun ballar to'plang.\n\n🔗 Sizning shaxsiy havolangiz:\n${link}\n\n📊 Hozirgacha taklif qilganlaringiz: ${count} kishi${ro_yxatMatni}`
@@ -548,10 +579,6 @@ bot.on('message', (msg) => {
       return;
     }
 
-    // Nima yuborilishidan qat'iy nazar (matn, rasm, video, hujjat, ovozli xabar,
-    // stiker, lokatsiya va h.k.) — message_id'sini ro'yxatga qo'shib qo'yamiz.
-    // Forward qilish esa "burst" (bittada yuborilgan bir nechta xabar) tugagach,
-    // finalizeSuggestion ichida ketma-ket amalga oshiriladi — shunda hech biri tushib qolmaydi.
     let buffer = suggestionBuffers.get(chatId);
     if (buffer) {
       clearTimeout(buffer.timeout);
@@ -694,13 +721,6 @@ bot.on('message', (msg) => {
   }
 
   // ==== HECH QAYSI TUGMAGA/HOLATGA MOS KELMAGAN XABAR ====
-  // Foydalanuvchi menyuda yo'q so'z yozsa yoki tasodifiy rasm/fayl(lar) yuborsa
-  // (taklif rejimida bo'lmasa), botni "o'lik" his qildirmaslik uchun javob qaytaramiz.
-  // DIQQAT: "/" bilan boshlanadigan buyruqlar (masalan /start) bu yerga tushmasligi kerak —
-  // ular alohida bot.onText orqali ishlanadi, aks holda ikkita xabar birdan ketadi.
-  // Bir nechta rasm/xabar bittada (albom sifatida) yuborilsa ham, javob FAQAT BIR MARTA
-  // (burst tugagach) yuborilishi uchun debounce qilamiz — aks holda har rasmga alohida
-  // "tushunmadim" javobi qaytib, chatni to'ldirib yuboradi.
   if (!text || !text.startsWith('/')) {
     const existingTimer = fallbackTimers.get(chatId);
     if (existingTimer) clearTimeout(existingTimer);
