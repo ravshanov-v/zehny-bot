@@ -358,7 +358,7 @@ const inglizMenu = {
   reply_markup: {
     keyboard: [
       ['🔤 Umumiy sinov'],
-      ["📖 Lug'at (IELTS)"],
+      ["📖 So'z boyligi"],
       ['📜 CEFR darajasini bilib olish'],
       ['⬅️ Tillarga qaytish']
     ],
