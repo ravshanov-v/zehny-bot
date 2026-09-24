@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const fs = require('fs');
+const fs = require('fs').promises; // Asinxron fayl tizimi
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -21,7 +21,7 @@ const MINI_APP_URL = 'https://ravshanov-v.github.io/zehnly-app/';
 
 // ==== TAKLIF TUGMASI UCHUN ====
 const awaitingSuggestion = new Set();
-const ADMIN_CHAT_ID = 7483038020; // <-- Sizning chat_id'ingiz
+const ADMIN_CHAT_ID = 7483038020; // Admin Telegram Chat ID
 
 const suggestionBuffers = new Map();
 const SUGGESTION_DEBOUNCE_MS = 1200; 
@@ -29,6 +29,9 @@ const FORWARD_DELAY_MS = 350;
 
 const fallbackTimers = new Map();
 const FALLBACK_DEBOUNCE_MS = 800;
+
+// Forward qilingan xabar ID si va asl yuboruvchi ID sini bog'lab turuvchi Map
+const adminForwardMap = new Map();
 
 function forwardSequentially(chatId, messageIds, index, forwardedMsgIds = [], onComplete) {
   if (index >= messageIds.length) {
@@ -38,6 +41,8 @@ function forwardSequentially(chatId, messageIds, index, forwardedMsgIds = [], on
   bot.forwardMessage(ADMIN_CHAT_ID, chatId, messageIds[index])
     .then((fwdMsg) => {
       forwardedMsgIds.push(fwdMsg.message_id);
+      // Admin uchun kelgan forward xabar ID sini va foydalanuvchi Chat ID sini saqlaymiz
+      adminForwardMap.set(fwdMsg.message_id, chatId);
     })
     .catch((err) => {
       console.error(`Forward qilishda xato (message_id=${messageIds[index]}):`, err.message);
@@ -58,7 +63,6 @@ function finalizeSuggestion(chatId, fromObj, messageIds) {
   forwardSequentially(chatId, messageIds, 0, [], (forwardedMsgIds) => {
     const nechtaXabar = count > 1 ? `\n📦 Yuborilgan xabarlar/media soni: ${count} ta` : '';
     
-    // Admin xabarni Reply qilishga qulay bo'lishi uchun oxirgi forward xabariga biriktiramiz
     const lastForwardId = forwardedMsgIds.length > 0 ? forwardedMsgIds[forwardedMsgIds.length - 1] : null;
     const options = lastForwardId ? { reply_to_message_id: lastForwardId } : {};
 
@@ -66,22 +70,28 @@ function finalizeSuggestion(chatId, fromObj, messageIds) {
       ADMIN_CHAT_ID,
       `📩 **Yangi taklif!**\n\n👤 **Ism:** ${userName}\n🔗 **Username:** ${usernameLabel}\n🆔 **ID:** \`${chatId}\`\n🕒 **Vaqt:** ${new Date().toLocaleString('uz-UZ')}${nechtaXabar}\n\n💬 _Ushbu taklifga javob berish uchun shu xabarga yoki yuqoridagi forward qilingan xabarga Reply (Ответить) qiling._`,
       { parse_mode: 'Markdown', ...options }
-    ).catch(() => {});
+    ).then((adminInfoMsg) => {
+      // Malumot beruvchi xabar ID sini ham Map ga biriktiramiz
+      adminForwardMap.set(adminInfoMsg.message_id, chatId);
+    }).catch(() => {});
 
-    // Foydalanuvchiga har doimgidek avtomatik ravishda rahmat xabari boradi
     bot.sendMessage(chatId, "✅ Rahmat! Taklifingiz qabul qilindi.", mainMenu).catch(() => {});
   });
 }
 
 // ==== ADMIN REPLYSINI USHLASH (ADMIN FOYDALANUVCHIGA JAVOB YOZGANDA) ====
 bot.on('message', (msg) => {
-  // Faqat adminga va Reply qilingan xabarlarga tegishli
   if (msg.chat.id === ADMIN_CHAT_ID && msg.reply_to_message) {
     const replyTo = msg.reply_to_message;
     let targetUserId = null;
 
-    // 1. Agar admin bot yuborgan xabarga reply qilgan bo'lsa (ID text ichida bo'ladi)
-    if (replyTo.text || replyTo.caption) {
+    // 1-bosqich: Map dan izlash (eng ishonchli usul)
+    if (adminForwardMap.has(replyTo.message_id)) {
+      targetUserId = adminForwardMap.get(replyTo.message_id);
+    }
+
+    // 2-bosqich: Agarda Map da bo'lmasa, matn ichidan ID ni regex orqali izlash
+    if (!targetUserId && (replyTo.text || replyTo.caption)) {
       const textContent = replyTo.text || replyTo.caption;
       const match = textContent.match(/🆔 \*\*ID:\*\* `?(\d+)`?/i) || textContent.match(/ID: (\d+)/i);
       if (match && match[1]) {
@@ -89,14 +99,13 @@ bot.on('message', (msg) => {
       }
     }
 
-    // 2. Agar admin to'g'ridan-to'g'ri forward qilingan xabarning o'ziga reply qilgan bo'lsa
+    // 3-bosqich: Agarda profil ochiq bo'lsa, forward_from orqali olish
     if (!targetUserId && replyTo.forward_from) {
       targetUserId = replyTo.forward_from.id;
     }
 
     // Topilgan bo'lsa, xabarni foydalanuvchiga yuboramiz
     if (targetUserId) {
-      // Agar admin xabar yozgan bo'lsa:
       if (msg.text) {
         bot.sendMessage(
           targetUserId,
@@ -108,7 +117,6 @@ bot.on('message', (msg) => {
           bot.sendMessage(ADMIN_CHAT_ID, `❌ Javob yuborishda xatolik (foydalanuvchi botni bloklagan bo'lishi mumkin): ${err.message}`);
         });
       } else {
-        // Agar admin rasm, audio yoki boshqa fayl yuborsa — shunchaki forward qiladi
         bot.copyMessage(targetUserId, ADMIN_CHAT_ID, msg.message_id)
           .then(() => {
             bot.sendMessage(ADMIN_CHAT_ID, "✅ Javobingiz foydalanuvchiga yetkazildi!");
@@ -127,18 +135,18 @@ const REFERRAL_BONUS_THRESHOLD = 3;
 
 let botUsername = null; 
 
-function loadUsers() {
+async function loadUsers() {
   try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf8');
+    const raw = await fs.readFile(USERS_FILE, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
     return {}; 
   }
 }
 
-function saveUsers(users) {
+async function saveUsers(users) {
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
   } catch (err) {
     console.error('users.json ga yozishda xato:', err.message);
   }
@@ -151,8 +159,8 @@ function buildDisplayName(fromObj) {
   return full || 'Foydalanuvchi';
 }
 
-function registerUser(chatId, referrerId, newUserInfo) {
-  const users = loadUsers();
+async function registerUser(chatId, referrerId, newUserInfo) {
+  const users = await loadUsers();
   const chatIdStr = String(chatId);
 
   if (users[chatIdStr]) {
@@ -188,18 +196,18 @@ function registerUser(chatId, referrerId, newUserInfo) {
     }
   }
 
-  saveUsers(users);
+  await saveUsers(users);
   return { isNew: true, referrerReachedBonus, referrerId };
 }
 
-function getReferralCount(chatId) {
-  const users = loadUsers();
+async function getReferralCount(chatId) {
+  const users = await loadUsers();
   const user = users[String(chatId)];
   return user ? user.referralCount : 0;
 }
 
-function getReferredUsersList(chatId) {
-  const users = loadUsers();
+async function getReferredUsersList(chatId) {
+  const users = await loadUsers();
   const user = users[String(chatId)];
   if (!user || !Array.isArray(user.referredUsers)) return [];
   return [...user.referredUsers].reverse();
@@ -413,6 +421,17 @@ const itMenu = {
   }
 };
 
+// Barcha tugmalar ro'yxati (taklif rejimini bekor qilish uchun)
+const allMenuButtons = [
+  '🎮 Qiziqarli sinovlar', '📚 Maktab fanlari', '🌐 Tillar', "💻 IT yo'nalishlari",
+  '🎁 Do\'stlarni taklif qilish', '📝 Taklif bildirish', '⚽ Sport sinovi', '🎬 Kino-Musiqa sinovi',
+  '💡 Fakt sinovi', '💻 Texnologiya sinovi', '📜 Tarix sinovi', '➗ Matematika sinovi',
+  '⚛️ Fizika sinovi', '🧪 Kimyo sinovi', '🧬 Biologiya sinovi', '📖 Adabiyot sinovi',
+  '✍️ Ona tili sinovi', '🌍 Geografiya sinovi', '🇬🇧 Ingliz tili', '🇷🇺 Rus tili',
+  '📜 Rus tili CEFR darajasini bilib olish', '📜 CEFR darajasini bilib olish',
+  '⬅️ Orqaga', '⬅️ Fanga qaytish', '⬅️ Tillarga qaytish', '⬅️ Ingliz tiliga qaytish', '⬅️ Rus tiliga qaytish'
+];
+
 bot.getMe().then((info) => {
   botUsername = info.username;
   console.log(`Bot username aniqlandi: @${botUsername}`);
@@ -420,7 +439,7 @@ bot.getMe().then((info) => {
   console.error("Bot username'ni olishda xato:", err.message);
 });
 
-bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
+bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
   const payload = match && match[1] ? match[1].trim() : null;
 
@@ -434,10 +453,10 @@ bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
     username: msg.from.username ? `@${msg.from.username}` : null,
   };
 
-  const result = registerUser(chatId, referrerId, newUserInfo);
+  const result = await registerUser(chatId, referrerId, newUserInfo);
 
   if (result.isNew && result.referrerId) {
-    const newCount = getReferralCount(result.referrerId);
+    const newCount = await getReferralCount(result.referrerId);
     const joinerLabel = newUserInfo.username
       ? `${newUserInfo.name} (${newUserInfo.username})`
       : newUserInfo.name;
@@ -520,13 +539,23 @@ const mavzular = {
 
 const tayyorEmasMavzular = [];
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   // Adminga doir xabarlar va Reply xabarlarni asosiy menyuga aralashtirmaymiz
   if (chatId === ADMIN_CHAT_ID && msg.reply_to_message) {
     return;
+  }
+
+  // Agar foydalanuvchi menyu tugmasini bossa, taklif rejimini bekor qilamiz
+  if (allMenuButtons.includes(text) && text !== '📝 Taklif bildirish') {
+    if (awaitingSuggestion.has(chatId)) {
+      awaitingSuggestion.delete(chatId);
+      const buffer = suggestionBuffers.get(chatId);
+      if (buffer) clearTimeout(buffer.timeout);
+      suggestionBuffers.delete(chatId);
+    }
   }
 
   const pendingFallback = fallbackTimers.get(chatId);
@@ -538,8 +567,8 @@ bot.on('message', (msg) => {
   // ==== 0) DO'STLARNI TAKLIF QILISH TUGMASI ====
   if (text === '🎁 Do\'stlarni taklif qilish') {
     const link = getReferralLink(chatId);
-    const count = getReferralCount(chatId);
-    const referredList = getReferredUsersList(chatId);
+    const count = await getReferralCount(chatId);
+    const referredList = await getReferredUsersList(chatId);
 
     let ro_yxatMatni = '';
     if (referredList.length > 0) {
