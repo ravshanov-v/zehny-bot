@@ -358,6 +358,7 @@ const inglizMenu = {
   reply_markup: {
     keyboard: [
       ['🔤 Umumiy sinov'],
+      ["📖 Lug'at (IELTS)"],
       ['📜 CEFR darajasini bilib olish'],
       ['⬅️ Tillarga qaytish']
     ],
@@ -466,6 +467,7 @@ const mavzular = {
   '💡 Fakt sinovi': { key: 'faktlar', nom: 'Fakt sinovi' },
   '💻 Texnologiya sinovi': { key: 'texnologiya', nom: 'Texnologiya sinovi' },
   '🔤 Umumiy sinov': { key: 'ingliz', nom: 'Ingliz tili umumiy sinovi' },
+  "📖 Lug'at (IELTS)": { key: 'lugat_ielts', nom: "IELTS lug'ati" },
   '🟢 5-7 sinf': { key: 'tarix_5_7', nom: 'Tarix sinovi (5-7 sinf)' },
   '🟡 7-9 sinf': { key: 'tarix_7_9', nom: 'Tarix sinovi (7-9 sinf)' },
   '🔴 9-11 sinf': { key: 'tarix_9_11', nom: 'Tarix sinovi (9-11 sinf)' },
