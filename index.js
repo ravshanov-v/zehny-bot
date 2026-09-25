@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const fs = require('fs').promises; // Asinxron fayl tizimi
+const fs = require('fs').promises;
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -30,7 +31,6 @@ const FORWARD_DELAY_MS = 350;
 const fallbackTimers = new Map();
 const FALLBACK_DEBOUNCE_MS = 800;
 
-// Forward qilingan xabar ID si va asl yuboruvchi ID sini bog'lab turuvchi Map
 const adminForwardMap = new Map();
 
 function forwardSequentially(chatId, messageIds, index, forwardedMsgIds = [], onComplete) {
@@ -77,7 +77,7 @@ function finalizeSuggestion(chatId, fromObj, messageIds) {
   });
 }
 
-// ==== ADMIN REPLYSINI USHLASH (ADMIN FOYDALANUVCHIGA JAVOB YOZGANDA) ====
+// ==== ADMIN REPLYSINI USHLASH ====
 bot.on('message', (msg) => {
   if (msg.chat.id === ADMIN_CHAT_ID && msg.reply_to_message) {
     const replyTo = msg.reply_to_message;
@@ -124,7 +124,7 @@ bot.on('message', (msg) => {
 });
 
 // ==== REFERAL VA STATISTIKA TIZIMI ====
-const USERS_FILE = './users.json';
+const USERS_FILE = path.join(__dirname, 'users.json');
 const REFERRAL_BONUS_THRESHOLD = 3; 
 
 let botUsername = null; 
@@ -147,6 +147,7 @@ async function saveUsers(users) {
 }
 
 function buildDisplayName(fromObj) {
+  if (!fromObj) return 'Foydalanuvchi';
   const first = fromObj.first_name || '';
   const last = fromObj.last_name || '';
   const full = `${first} ${last}`.trim();
@@ -158,16 +159,17 @@ async function registerUser(chatId, referrerId, newUserInfo) {
   const chatIdStr = String(chatId);
 
   if (users[chatIdStr]) {
-    // Profil ma'lumotlarini yangilab qo'yamiz
-    users[chatIdStr].name = newUserInfo.name;
-    users[chatIdStr].username = newUserInfo.username;
-    await saveUsers(users);
+    if (newUserInfo) {
+      users[chatIdStr].name = newUserInfo.name || users[chatIdStr].name;
+      users[chatIdStr].username = newUserInfo.username || users[chatIdStr].username;
+      await saveUsers(users);
+    }
     return { isNew: false, referrerReachedBonus: false };
   }
 
   users[chatIdStr] = {
-    name: newUserInfo.name,
-    username: newUserInfo.username,
+    name: newUserInfo ? newUserInfo.name : 'Foydalanuvchi',
+    username: newUserInfo ? newUserInfo.username : null,
     referredBy: referrerId ? String(referrerId) : null,
     referralCount: 0,
     referredUsers: [], 
@@ -178,7 +180,7 @@ async function registerUser(chatId, referrerId, newUserInfo) {
 
   if (referrerId && referrerId !== chatIdStr && users[String(referrerId)]) {
     const referrer = users[String(referrerId)];
-    referrer.referralCount += 1;
+    referrer.referralCount = (referrer.referralCount || 0) + 1;
 
     if (!Array.isArray(referrer.referredUsers)) {
       referrer.referredUsers = [];
@@ -203,7 +205,7 @@ async function registerUser(chatId, referrerId, newUserInfo) {
 async function getReferralCount(chatId) {
   const users = await loadUsers();
   const user = users[String(chatId)];
-  return user ? user.referralCount : 0;
+  return user ? (user.referralCount || 0) : 0;
 }
 
 async function getReferredUsersList(chatId) {
@@ -218,7 +220,7 @@ function getReferralLink(chatId) {
   return `https://t.me/${uname}?start=ref_${chatId}`;
 }
 
-// ==== ADMIN BUYRUQLARI (STATISTIKA VA FOYDALANUVCHILARNI KO'RISH) ====
+// ==== ADMIN BUYRUQLARI ====
 bot.onText(/\/stats/, async (msg) => {
   const chatId = msg.chat.id;
   if (chatId !== ADMIN_CHAT_ID) return;
@@ -251,7 +253,6 @@ bot.onText(/\/users/, async (msg) => {
     return;
   }
 
-  // Oxirgi qo'shilgan 20 ta foydalanuvchi
   const lastUsers = userIds.slice(-20).reverse();
   
   let userListText = `👥 **Oxirgi 20 ta foydalanuvchi ro'yxati:**\n\n`;
@@ -590,6 +591,15 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
+  // Har bir kelgan xabarda foydalanuvchini ro'yxatga olish / yangilash
+  if (msg.from) {
+    const userInfo = {
+      name: buildDisplayName(msg.from),
+      username: msg.from.username ? `@${msg.from.username}` : null
+    };
+    await registerUser(chatId, null, userInfo);
+  }
+
   if (chatId === ADMIN_CHAT_ID && msg.reply_to_message) {
     return;
   }
@@ -781,7 +791,7 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (mavzular[text]) {
+  if (text && mavzular[text]) {
     const { key, nom } = mavzular[text];
     const ogohlantirish = key.endsWith('_milliy')
       ? "\n\n⚠️ Eslatma: bu taxminiy natija beruvchi mashq, rasmiy Milliy sertifikat imtihoni emas."
