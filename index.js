@@ -41,7 +41,6 @@ function forwardSequentially(chatId, messageIds, index, forwardedMsgIds = [], on
   bot.forwardMessage(ADMIN_CHAT_ID, chatId, messageIds[index])
     .then((fwdMsg) => {
       forwardedMsgIds.push(fwdMsg.message_id);
-      // Admin uchun kelgan forward xabar ID sini va foydalanuvchi Chat ID sini saqlaymiz
       adminForwardMap.set(fwdMsg.message_id, chatId);
     })
     .catch((err) => {
@@ -71,7 +70,6 @@ function finalizeSuggestion(chatId, fromObj, messageIds) {
       `📩 **Yangi taklif!**\n\n👤 **Ism:** ${userName}\n🔗 **Username:** ${usernameLabel}\n🆔 **ID:** \`${chatId}\`\n🕒 **Vaqt:** ${new Date().toLocaleString('uz-UZ')}${nechtaXabar}\n\n💬 _Ushbu taklifga javob berish uchun shu xabarga yoki yuqoridagi forward qilingan xabarga Reply (Ответить) qiling._`,
       { parse_mode: 'Markdown', ...options }
     ).then((adminInfoMsg) => {
-      // Malumot beruvchi xabar ID sini ham Map ga biriktiramiz
       adminForwardMap.set(adminInfoMsg.message_id, chatId);
     }).catch(() => {});
 
@@ -85,12 +83,10 @@ bot.on('message', (msg) => {
     const replyTo = msg.reply_to_message;
     let targetUserId = null;
 
-    // 1-bosqich: Map dan izlash (eng ishonchli usul)
     if (adminForwardMap.has(replyTo.message_id)) {
       targetUserId = adminForwardMap.get(replyTo.message_id);
     }
 
-    // 2-bosqich: Agarda Map da bo'lmasa, matn ichidan ID ni regex orqali izlash
     if (!targetUserId && (replyTo.text || replyTo.caption)) {
       const textContent = replyTo.text || replyTo.caption;
       const match = textContent.match(/🆔 \*\*ID:\*\* `?(\d+)`?/i) || textContent.match(/ID: (\d+)/i);
@@ -99,12 +95,10 @@ bot.on('message', (msg) => {
       }
     }
 
-    // 3-bosqich: Agarda profil ochiq bo'lsa, forward_from orqali olish
     if (!targetUserId && replyTo.forward_from) {
       targetUserId = replyTo.forward_from.id;
     }
 
-    // Topilgan bo'lsa, xabarni foydalanuvchiga yuboramiz
     if (targetUserId) {
       if (msg.text) {
         bot.sendMessage(
@@ -129,7 +123,7 @@ bot.on('message', (msg) => {
   }
 });
 
-// ==== REFERAL TIZIMI ====
+// ==== REFERAL VA STATISTIKA TIZIMI ====
 const USERS_FILE = './users.json';
 const REFERRAL_BONUS_THRESHOLD = 3; 
 
@@ -164,10 +158,16 @@ async function registerUser(chatId, referrerId, newUserInfo) {
   const chatIdStr = String(chatId);
 
   if (users[chatIdStr]) {
+    // Profil ma'lumotlarini yangilab qo'yamiz
+    users[chatIdStr].name = newUserInfo.name;
+    users[chatIdStr].username = newUserInfo.username;
+    await saveUsers(users);
     return { isNew: false, referrerReachedBonus: false };
   }
 
   users[chatIdStr] = {
+    name: newUserInfo.name,
+    username: newUserInfo.username,
     referredBy: referrerId ? String(referrerId) : null,
     referralCount: 0,
     referredUsers: [], 
@@ -217,6 +217,54 @@ function getReferralLink(chatId) {
   const uname = botUsername || 'YourBotUsername';
   return `https://t.me/${uname}?start=ref_${chatId}`;
 }
+
+// ==== ADMIN BUYRUQLARI (STATISTIKA VA FOYDALANUVCHILARNI KO'RISH) ====
+bot.onText(/\/stats/, async (msg) => {
+  const chatId = msg.chat.id;
+  if (chatId !== ADMIN_CHAT_ID) return;
+
+  const users = await loadUsers();
+  const userIds = Object.keys(users);
+  const totalUsers = userIds.length;
+
+  let totalReferrals = 0;
+  userIds.forEach(id => {
+    totalReferrals += users[id].referralCount || 0;
+  });
+
+  const statsText = `📊 **Zehnly Bot Statistikasi:**\n\n` +
+                    `👥 **Jami foydalanuvchilar:** ${totalUsers} kishi\n` +
+                    `🔗 **Jami taklif qilinganlar:** ${totalReferrals} kishi`;
+
+  bot.sendMessage(chatId, statsText, { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/users/, async (msg) => {
+  const chatId = msg.chat.id;
+  if (chatId !== ADMIN_CHAT_ID) return;
+
+  const users = await loadUsers();
+  const userIds = Object.keys(users);
+
+  if (userIds.length === 0) {
+    bot.sendMessage(chatId, "Hali hech qanday foydalanuvchi ro'yxatdan o'tmagan.");
+    return;
+  }
+
+  // Oxirgi qo'shilgan 20 ta foydalanuvchi
+  const lastUsers = userIds.slice(-20).reverse();
+  
+  let userListText = `👥 **Oxirgi 20 ta foydalanuvchi ro'yxati:**\n\n`;
+
+  lastUsers.forEach((id, index) => {
+    const u = users[id];
+    const joinedDate = u.joinedAt ? new Date(u.joinedAt).toLocaleDateString('uz-UZ') : 'Noma\'lum';
+    const userLabel = u.username ? `${u.name} (${u.username})` : (u.name || 'Foydalanuvchi');
+    userListText += `${index + 1}. ${userLabel}\n🆔 \`${id}\` | Takliflari: ${u.referralCount || 0} ta | Sana: ${joinedDate}\n\n`;
+  });
+
+  bot.sendMessage(chatId, userListText, { parse_mode: 'Markdown' });
+});
 
 const mainMenu = {
   reply_markup: {
@@ -421,7 +469,6 @@ const itMenu = {
   }
 };
 
-// Barcha tugmalar ro'yxati (taklif rejimini bekor qilish uchun)
 const allMenuButtons = [
   '🎮 Qiziqarli sinovlar', '📚 Maktab fanlari', '🌐 Tillar', "💻 IT yo'nalishlari",
   '🎁 Do\'stlarni taklif qilish', '📝 Taklif bildirish', '⚽ Sport sinovi', '🎬 Kino-Musiqa sinovi',
@@ -543,12 +590,10 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  // Adminga doir xabarlar va Reply xabarlarni asosiy menyuga aralashtirmaymiz
   if (chatId === ADMIN_CHAT_ID && msg.reply_to_message) {
     return;
   }
 
-  // Agar foydalanuvchi menyu tugmasini bossa, taklif rejimini bekor qilamiz
   if (allMenuButtons.includes(text) && text !== '📝 Taklif bildirish') {
     if (awaitingSuggestion.has(chatId)) {
       awaitingSuggestion.delete(chatId);
